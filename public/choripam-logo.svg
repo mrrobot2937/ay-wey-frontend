@@ -1,0 +1,11 @@
+<svg width="739" height="370" viewBox="0 0 739 370" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="739" height="370" fill="black"/>
+  <path d="M37 153C37 153 62 110 120 110C178 110 203 153 203 153" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <path d="M702 153C702 153 677 110 619 110C561 110 536 153 536 153" stroke="white" stroke-width="18" stroke-linecap="round"/>
+  <path d="M37 153C37 210 74 230 120 240C166 250 370 270 619 240C665 230 702 210 702 153" stroke="white" stroke-width="18"/>
+  <text x="70" y="200" font-family="Comic Sans MS, Comic Sans, cursive" font-size="110" fill="white" font-weight="bold">chori</text>
+  <text x="320" y="220" font-family="Comic Sans MS, Comic Sans, cursive" font-size="110" fill="white" font-weight="bold">Pam</text>
+  <circle cx="330" cy="170" r="10" fill="white"/>
+  <polygon points="20,140 30,170 50,167" fill="white"/>
+  <polygon points="719,140 709,170 689,167" fill="white"/>
+</svg> 
