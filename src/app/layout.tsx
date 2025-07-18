@@ -4,7 +4,6 @@ import "./globals.css";
 import { CartProvider } from "../contexts/CartContext";
 import { ApolloProvider } from "../components/ApolloProvider";
 import { HydrationSafeProvider } from "../components/HydrationSafeProvider";
-import Image from "next/image";
 import Link from "next/link";
 import CartButtonAndPanel from "../components/CartButtonAndPanel";
 

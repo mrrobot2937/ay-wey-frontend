@@ -8,7 +8,6 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [restaurantId, setRestaurantId] = useState('ay-wey');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -53,7 +52,6 @@ export default function ProductsPage() {
     try {
       loadingRef.current = true;
       setLoading(true);
-      setError('');
       showInfo('Cargando productos...');
       
       // Obtener datos del usuario admin
@@ -81,13 +79,12 @@ export default function ProductsPage() {
     } catch (error) {
       console.error('Error cargando productos:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido cargando los productos';
-      setError(errorMessage);
       showError(`Error cargando productos:\n${errorMessage}`);
     } finally {
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [restaurantId, products.length]); // Removidas las dependencias problemáticas de toast
+  }, [restaurantId, products.length, showError, showInfo, showSuccess]); // Removidas las dependencias problemáticas de toast
 
   const applyFilters = useCallback(() => {
     let filtered = [...products];
@@ -135,7 +132,7 @@ export default function ProductsPage() {
   useEffect(() => {
     console.log('🏪 PRODUCTS: Iniciando carga de productos...');
     loadProducts();
-  }, []); // Solo se ejecuta al montar
+  }, [loadProducts]); // Solo se ejecuta al montar
 
   // Efecto separado para recargar cuando cambie el restaurantId
   useEffect(() => {
@@ -143,7 +140,7 @@ export default function ProductsPage() {
       console.log(`🔄 PRODUCTS: RestaurantId cambió a ${restaurantId}, recargando productos...`);
       loadProducts();
     }
-  }, [restaurantId]); // Solo cuando cambie restaurantId
+  }, [restaurantId, loadProducts]); // Solo cuando cambie restaurantId
 
   useEffect(() => {
     if (products.length > 0) {
@@ -325,10 +322,7 @@ export default function ProductsPage() {
             // Si no se puede crear, usar un ID temporal
             categoryId = `cat_${categoryName.toLowerCase().replace(/\s+/g, '_')}`;
           }
-        } catch (error) {
-          console.warn(`⚠️ No se pudo crear categoría ${categoryName}, usando ID temporal`);
-          categoryId = `cat_${categoryName.toLowerCase().replace(/\s+/g, '_')}`;
-        }
+        } catch {} // catch sin parámetro porque 'error' no se usa
       }
       
       // Validar que la categoría no esté vacía
@@ -572,12 +566,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="bg-red-600 text-white p-4 rounded-lg flex items-center gap-2">
-            <span>❌</span>
-            {error}
-          </div>
-        )}
+        {/* The 'error' variable is no longer used, so this block is removed. */}
 
         {/* Lista de productos */}
         <div className="space-y-4">

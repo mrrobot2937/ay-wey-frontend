@@ -208,7 +208,7 @@ export const useOrderNotifications = (
                 clearInterval(intervalRef.current);
             }
         };
-    }, [enabled, intervalMs, cleanRestaurantId]); // Removida la dependencia de checkOrders
+    }, [enabled, intervalMs, cleanRestaurantId, checkOrders]); // Removida la dependencia de checkOrders
 
     // Solicitar permisos de notificación
     useEffect(() => {

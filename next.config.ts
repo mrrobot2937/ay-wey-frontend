@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental: {
-    esmExternals: 'loose'
-  },
-
   // Configuración de imágenes
   images: {
     remotePatterns: [

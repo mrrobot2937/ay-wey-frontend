@@ -23,7 +23,6 @@ import {
     CreateCategoryInput,
     convertProductToLegacy,
     convertOrderToLegacy,
-    convertLegacyOrderDataToGraphQL,
     convertLegacyOrderDataToGraphQLWithOriginalIds
 } from '../types/graphql';
 

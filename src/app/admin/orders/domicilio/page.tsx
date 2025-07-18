@@ -38,7 +38,7 @@ export default function DomicilioOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, []);
 
   const applyFilters = useCallback(() => {
     let filtered = [...orders];

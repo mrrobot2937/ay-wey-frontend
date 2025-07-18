@@ -31,7 +31,7 @@ export default function AdminOrders() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId, statusFilter]);
+  }, [statusFilter]);
 
   useEffect(() => {
     loadOrders();

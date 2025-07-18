@@ -37,7 +37,7 @@ export default function RecogerOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, []);
 
   const applyFilters = useCallback(() => {
     let filtered = [...orders];

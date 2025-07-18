@@ -23,9 +23,6 @@ export default function CheckoutPage() {
   const [payment, setPayment] = useState(paymentOptions[0].value);
   const [delivery, setDelivery] = useState(deliveryOptions[0].value);
   // Campos de cliente removidos para pedidos por mesero
-  const [name, setName] = useState("Cliente de mesa");
-  const [email, setEmail] = useState("cliente@ay-wey.com");
-  const [phone, setPhone] = useState("3000000000");
   const [address, setAddress] = useState("");
   const [terms, setTerms] = useState(false);
   const [coupon, setCoupon] = useState("");
@@ -84,9 +81,9 @@ export default function CheckoutPage() {
       });
 
       const orderData: CreateOrderData = {
-        nombre: name,
-        telefono: phone,
-        correo: email,
+        nombre: "Cliente de mesa", // Assuming a default name for the API
+        telefono: "3000000000", // Assuming a default phone for the API
+        correo: "cliente@ay-wey.com", // Assuming a default email for the API
         direccion: delivery === "domicilio" ? address : "",
         mesa: delivery === "mesa" ? mesa : "",
         productos: productos,
@@ -113,7 +110,7 @@ export default function CheckoutPage() {
   }
 
   // Mensaje de WhatsApp personalizado
-  const WHATSAPP_NUMBER = phone.replace(/[^0-9]/g, "");
+  const WHATSAPP_NUMBER = "3000000000"; // Assuming a default phone number for WhatsApp link
   let whatsappMsg = "";
   
   if (payment === "transferencia") {
