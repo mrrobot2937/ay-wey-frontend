@@ -16,15 +16,10 @@ import {
 import {
     Product,
     Order,
-    LegacyProduct,
-    LegacyOrder,
-    LegacyCreateOrderData,
     CreateProductInput,
     UpdateProductInput,
+    CreateOrderInput,
     CreateCategoryInput,
-    convertProductToLegacy,
-    convertOrderToLegacy,
-    convertLegacyOrderDataToGraphQLWithOriginalIds
 } from '../types/graphql';
 
 // Interfaces para mantener compatibilidad con el código existente
@@ -166,7 +161,7 @@ class GraphQLApiService {
     }
 
     async updateProduct(
-        productId: string,
+        productId: number,
         productData: Partial<UpdateProductInput>,
         restaurantId: string = this.defaultRestaurantId
     ): Promise<{ success: boolean; message: string }> {
@@ -200,7 +195,7 @@ class GraphQLApiService {
     }
 
     async deleteProduct(
-        productId: string,
+        productId: number,
         restaurantId: string = this.defaultRestaurantId
     ): Promise<{ success: boolean; message: string }> {
         try {
@@ -230,34 +225,23 @@ class GraphQLApiService {
     }
 
     /**
-     * Pedidos
+     * Métodos de pedidos
      */
     async createOrder(
-        orderData: LegacyCreateOrderData,
-        restaurantId: string = this.defaultRestaurantId
+        orderData: CreateOrderInput
     ): Promise<{ success: boolean; order_id: string; message: string }> {
+        console.log(`[GraphQL] Creando orden para ${orderData.customerName}...`);
+
         try {
-            console.log(`🔄 Creando pedido para: ${orderData.nombre}`);
-
-            // Obtener productos para buscar IDs originales
-            const productsResponse = await this.getProducts(restaurantId);
-            const input = convertLegacyOrderDataToGraphQLWithOriginalIds(orderData, productsResponse.products, restaurantId);
-
-            console.log(`🔍 Productos en orden:`, orderData.productos.map(p => ({ id: p.id, cantidad: p.cantidad })));
-            console.log(`🔍 IDs originales encontrados:`, input.products.map(p => ({ id: p.id, quantity: p.quantity })));
-
             const { data } = await apolloClient.mutate({
                 mutation: CREATE_ORDER,
-                variables: { input },
-                refetchQueries: [
-                    { query: GET_ORDERS, variables: { restaurantId } }
-                ]
+                variables: {
+                    input: orderData
+                }
             });
 
             const result = data.createOrder;
-
             if (result.success) {
-                console.log(`✅ Pedido creado exitosamente: ${result.id}`);
                 return {
                     success: true,
                     order_id: result.id,
@@ -267,8 +251,9 @@ class GraphQLApiService {
                 throw new Error(result.message);
             }
         } catch (error) {
-            console.error('❌ Error creando pedido:', error);
-            throw new Error(`Error creando pedido: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+            console.error('[GraphQL] Error creando orden:', error);
+            const message = error instanceof Error ? error.message : 'Error desconocido del servidor';
+            return { success: false, order_id: '', message };
         }
     }
 
@@ -364,7 +349,7 @@ class GraphQLApiService {
         productId: string,
         quantity: number,
         restaurantId: string = this.defaultRestaurantId
-    ): Promise<{ success: boolean; message: string; order?: any }> {
+    ): Promise<{ success: boolean; message: string; order?: Order }> {
         try {
             console.log(`🔄 Añadiendo producto a la orden: ${orderId}`);
             const { data } = await apolloClient.mutate({

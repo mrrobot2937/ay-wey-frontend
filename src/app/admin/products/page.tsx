@@ -31,7 +31,7 @@ export default function ProductsPage() {
     description: '',
     price: '',
     category: '',
-    image_url: '',
+    imageUrl: '', // camelCase en el estado
     available: true,
     variants: [] as Array<{ size: string; price: string; imageUrl?: string }>
   });
@@ -207,7 +207,7 @@ export default function ProductsPage() {
         description: product.description,
         price: product.price.toString(),
         category: getCategoryName(product.category),
-        image_url: product.image_url || '',
+        imageUrl: product.imageUrl || '', // camelCase desde el producto
         available: product.available,
         variants: Array.isArray(product.variants)
           ? product.variants.map((v: { size: string; price: number; imageUrl?: string }) => ({
@@ -224,7 +224,7 @@ export default function ProductsPage() {
         description: '',
         price: '',
         category: '',
-        image_url: '',
+        imageUrl: '', // camelCase
         available: true,
         variants: []
       });
@@ -242,7 +242,7 @@ export default function ProductsPage() {
       description: '',
       price: '',
       category: '',
-      image_url: '',
+      imageUrl: '', // camelCase
       available: true,
       variants: []
     });
@@ -271,107 +271,39 @@ export default function ProductsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.name || !formData.description || !formData.price || !formData.category) {
       showError('Por favor completa todos los campos obligatorios');
       return;
     }
-
-    // Validar variantes
     for (const v of formData.variants) {
       if (!v.size || !v.price) {
         showError('Todas las variantes deben tener tamaño y precio');
         return;
       }
     }
-
-    try {
-      console.log('🔍 Debug categoría:', {
-        formDataCategory: formData.category,
-        categories: categories.map(c => ({ id: c.id, name: c.name })),
-        restaurantId
-      });
-      
-      // Manejar categorías predefinidas
-      let categoryId = formData.category;
-      
-      // Si es una categoría predefinida, intentar crearla primero
-      const predefinedCategories = {
-        'platos-principales': 'Platos Principales',
-        'acompañamientos': 'Acompañamientos', 
-        'bebidas': 'Bebidas',
-        'postres': 'Postres',
-        'entradas': 'Entradas'
-      };
-      
-      if (predefinedCategories[categoryId as keyof typeof predefinedCategories]) {
-        const categoryName = predefinedCategories[categoryId as keyof typeof predefinedCategories];
-        
-        try {
-          // Intentar crear la categoría si no existe
-          console.log(`🔄 Intentando crear categoría: ${categoryName}`);
-          const categoryResult = await apiService.createCategory({
-            name: categoryName,
-            description: `Categoría para ${categoryName.toLowerCase()}`
-          }, restaurantId);
-          
-          if (categoryResult.success) {
-            categoryId = categoryResult.id;
-            console.log(`✅ Categoría creada exitosamente: ${categoryId}`);
-          } else {
-            // Si no se puede crear, usar un ID temporal
-            categoryId = `cat_${categoryName.toLowerCase().replace(/\s+/g, '_')}`;
-          }
-        } catch {} // catch sin parámetro porque 'error' no se usa
-      }
-      
-      // Validar que la categoría no esté vacía
-      if (!categoryId || categoryId.trim() === '') {
-        throw new Error('Debes seleccionar una categoría válida');
-      }
-      
-      console.log('🔍 Categoría final:', categoryId);
-      
-      const productData: {
-        name: string;
-        description: string;
-        price: number;
-        category: string;
-        image_url?: string;
-        available: boolean;
-        restaurant_id: string;
-        variants?: Array<{
-          size: string;
-          price: number;
-          imageUrl?: string;
-        }>;
-      } = {
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category: categoryId,
-        image_url: formData.image_url,
-        available: formData.available,
-        restaurant_id: restaurantId
-      };
-      // Siempre incluir variantes, incluso si es un array vacío
-      productData.variants = formData.variants.map(v => ({
+    const categoryId = formData.category;
+    const productData = {
+      name: formData.name,
+      description: formData.description,
+      price: parseFloat(formData.price),
+      category: categoryId,
+      image_url: formData.imageUrl,
+      available: formData.available,
+      restaurant_id: restaurantId,
+      variants: formData.variants.map(v => ({
         size: v.size,
         price: parseFloat(v.price),
         imageUrl: v.imageUrl || undefined
-      }));
+      }))
+    };
+    try {
       if (editingProduct) {
-        // Para editar, necesitamos el originalId
-        if (!editingProduct.originalId) {
-          throw new Error('No se encontró el ID original del producto');
-        }
-        await apiService.updateProduct(editingProduct.id, productData, restaurantId, editingProduct.originalId);
+        await apiService.updateProduct(parseInt(editingProduct.id, 10), productData, restaurantId);
         showSuccess('Producto actualizado exitosamente');
       } else {
         await apiService.createProduct(productData, restaurantId);
         showSuccess('Producto creado exitosamente');
       }
-
       closeModal();
       loadProducts();
     } catch (error) {
@@ -381,34 +313,11 @@ export default function ProductsPage() {
     }
   };
 
-  const toggleAvailability = async (productId: number, currentAvailability: boolean) => {
+  const toggleAvailability = async (product: Product) => {
     try {
-      // Buscar el producto en los productos ya cargados para obtener el originalId
-      const product = products.find(p => p.id === productId);
-      
-      console.log('🔍 Debug toggleAvailability:', {
-        productId,
-        currentAvailability,
-        product: product ? { id: product.id, name: product.name, originalId: product.originalId } : null,
-        allProductIds: products.map(p => ({ id: p.id, originalId: p.originalId, name: p.name }))
-      });
-      
-      if (!product || !product.originalId) {
-        throw new Error('No se encontró el producto o falta el ID original');
-      }
-
-      // Incluir las variantes existentes para que no se pierdan
-      const updateData = { 
-        available: !currentAvailability,
-        variants: (product.variants || []).map((v: { size: string; price: number; image_url?: string; imageUrl?: string }) => ({
-          size: v.size,
-          price: v.price,
-          imageUrl: v.image_url || v.imageUrl || undefined
-        }))
-      };
-
-      await apiService.updateProduct(productId, updateData, restaurantId, product.originalId);
-      const newStatus = !currentAvailability ? 'disponible' : 'no disponible';
+      const updateData = { available: !product.available };
+      await apiService.updateProduct(parseInt(product.id, 10), updateData, restaurantId);
+      const newStatus = !product.available ? 'disponible' : 'no disponible';
       showSuccess(`Producto marcado como ${newStatus}`);
       loadProducts();
     } catch (error) {
@@ -418,19 +327,13 @@ export default function ProductsPage() {
     }
   };
 
-  const deleteProduct = async (productId: number) => {
+  const deleteProduct = async (productId: string) => { // Recibe string
     if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) {
       return;
     }
 
     try {
-      // Buscar el producto en los productos ya cargados para obtener el originalId
-      const product = products.find(p => p.id === productId);
-      if (!product || !product.originalId) {
-        throw new Error('No se encontró el producto o falta el ID original');
-      }
-
-      await apiService.deleteProduct(productId, restaurantId, product.originalId);
+      await apiService.deleteProduct(parseInt(productId, 10), restaurantId);
       showSuccess('Producto eliminado exitosamente');
       loadProducts();
     } catch (error) {
@@ -591,9 +494,9 @@ export default function ProductsPage() {
                 <div key={product.id} className="bg-gray-800 rounded-lg border border-gray-700 p-4">
                   {/* Imagen */}
                   <div className="mb-4">
-                    {product.image_url ? (
+                    {product.imageUrl ? (
                       <Image
-                        src={product.image_url}
+                        src={product.imageUrl}
                         alt={product.name}
                         width={300}
                         height={192}
@@ -638,7 +541,7 @@ export default function ProductsPage() {
                       ✏️ Editar
                     </button>
                     <button
-                      onClick={() => toggleAvailability(product.id, product.available)}
+                      onClick={() => toggleAvailability(product)}
                       className={`flex-1 px-3 py-2 rounded text-sm transition-colors ${
                         product.available 
                           ? 'bg-orange-600 text-white hover:bg-orange-700' 
@@ -740,8 +643,8 @@ export default function ProductsPage() {
                   <label className="block text-gray-300 text-sm mb-2">URL de Imagen</label>
                   <input
                     type="url"
-                    value={formData.image_url}
-                    onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({...formData, imageUrl: e.target.value})}
                     className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded focus:outline-none focus:border-yellow-500"
                   />
                 </div>

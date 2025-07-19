@@ -62,10 +62,10 @@ class ApiService {
         }
     }
 
-    async updateProduct(productId: number, productData: Partial<{ name: string; description: string; price: number; image_url?: string; available: boolean; category: string }>, restaurantId: string = 'ay-wey', originalId?: string) {
-        console.log(`🔄 [GraphQL] Actualizando producto...`, { productId, restaurantId, originalId });
+    async updateProduct(productId: number, productData: Partial<{ name: string; description: string; price: number; image_url?: string; available: boolean; category: string }>, restaurantId: string = 'ay-wey') {
+        console.log(`🔄 [GraphQL] Actualizando producto...`, { productId, restaurantId });
         try {
-            const result = await this.graphqlService.updateProduct(productId, productData, restaurantId, originalId);
+            const result = await this.graphqlService.updateProduct(productId, productData, restaurantId);
             console.log(`✅ [GraphQL] Producto actualizado exitosamente`);
             return result;
         } catch (error) {
@@ -74,10 +74,10 @@ class ApiService {
         }
     }
 
-    async deleteProduct(productId: number, restaurantId: string = 'ay-wey', originalId?: string) {
-        console.log(`🔄 [GraphQL] Eliminando producto...`, { productId, restaurantId, originalId });
+    async deleteProduct(productId: number, restaurantId: string = 'ay-wey') {
+        console.log(`🔄 [GraphQL] Eliminando producto...`, { productId, restaurantId });
         try {
-            const result = await this.graphqlService.deleteProduct(productId, restaurantId, originalId);
+            const result = await this.graphqlService.deleteProduct(productId, restaurantId);
             console.log(`✅ [GraphQL] Producto eliminado exitosamente`);
             return result;
         } catch (error) {
@@ -92,7 +92,25 @@ class ApiService {
     async createOrder(orderData: { nombre: string; telefono: string; correo: string; productos: Array<{ id: number; cantidad: number; precio: number }>; total: number; metodo_pago: string; modalidad_entrega: string; mesa?: string; direccion?: string }, restaurantId: string = 'ay-wey') {
         console.log(`🔄 [GraphQL] Creando orden...`, { restaurantId, modalidad: orderData.modalidad_entrega });
         try {
-            const result = await this.graphqlService.createOrder(orderData, restaurantId);
+            // Convertir datos del formato español al formato inglés que espera CreateOrderInput
+            const createOrderInput = {
+                customerName: orderData.nombre,
+                customerPhone: orderData.telefono,
+                customerEmail: orderData.correo,
+                restaurantId: restaurantId,
+                products: orderData.productos.map(p => ({
+                    id: p.id.toString(), // Convertir a string
+                    quantity: p.cantidad,
+                    price: p.precio
+                })),
+                total: orderData.total,
+                paymentMethod: orderData.metodo_pago,
+                deliveryMethod: orderData.modalidad_entrega,
+                mesa: orderData.mesa,
+                deliveryAddress: orderData.direccion
+            };
+
+            const result = await this.graphqlService.createOrder(createOrderInput);
             console.log(`✅ [GraphQL] Orden creada exitosamente: ${result.order_id}`);
             return result;
         } catch (error) {
@@ -240,4 +258,4 @@ const apiService = new ApiService();
 export { apiService };
 
 // Exportar tipos desde el servicio GraphQL para compatibilidad
-export type { Order, Product, CreateOrderInput as CreateOrderData } from '../types/graphql'; 
+export type { Order, Product, CreateOrderInput as CreateOrderData, OrderStatus, DeliveryMethod, PaymentMethod } from '../types/graphql'; 

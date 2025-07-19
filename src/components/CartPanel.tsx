@@ -132,7 +132,7 @@ export default function CartPanel({ open, onClose }: { open: boolean; onClose: (
                 className="w-full mt-4 py-3 rounded-full bg-yellow-400 text-black font-bold text-xl hover:bg-yellow-300 transition-colors"
                 onClick={handleGoToCheckout}
               >
-                Ir a pagar ({cart.length} producto{cart.length !== 1 ? 's' : ''})
+                Enviar ({cart.length} producto{cart.length !== 1 ? 's' : ''})
               </button>
             </Link>
             <button 

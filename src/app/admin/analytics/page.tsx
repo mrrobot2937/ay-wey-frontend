@@ -1,15 +1,19 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { apiService, Order } from '../../../services/api-service';
+import { useQuery } from '@apollo/client';
+import { GET_ORDERS_BY_RESTAURANT } from '../../../graphql/queries';
+import { Order as GQLOrder, OrderStatus, DeliveryMethod, PaymentMethod } from '../../../types/graphql';
+import config from '../../../../env.config.js';
+import LoadingSpinner from '../../../components/LoadingSpinner'; // Importación corregida
 
 interface Analytics {
   total_orders: number;
   total_revenue: number;
   avg_order_value: number;
   orders_by_type: {
-    mesa: number;
-    domicilio: number;
-    recoger: number;
+    DINE_IN: number;
+    DELIVERY: number;
+    PICKUP: number;
   };
   orders_by_status: {
     [key: string]: number;
@@ -31,32 +35,34 @@ interface Analytics {
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [restaurantId, setRestaurantId] = useState('ay-wey');
   const [dateRange, setDateRange] = useState('7'); // días
 
-  const calculateAnalytics = useCallback((orders: Order[]): Analytics => {
+  const { data, loading: queryLoading, error: queryError, refetch } = useQuery(GET_ORDERS_BY_RESTAURANT, {
+      variables: { restaurantId: config.DEFAULT_RESTAURANT_ID },
+      fetchPolicy: 'network-only',
+  });
+
+  const calculateAnalytics = useCallback((orders: GQLOrder[]): Analytics => {
     const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
     const avgOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
 
     // Órdenes por tipo
     const ordersByType = orders.reduce((acc, order) => {
-      acc[order.delivery_method] = (acc[order.delivery_method] || 0) + 1;
+      acc[order.deliveryMethod] = (acc[order.deliveryMethod] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<DeliveryMethod, number>);
 
     // Órdenes por estado
     const ordersByStatus = orders.reduce((acc, order) => {
       acc[order.status] = (acc[order.status] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<OrderStatus, number>);
 
     // Órdenes por método de pago
     const ordersByPayment = orders.reduce((acc, order) => {
-      acc[order.payment_method] = (acc[order.payment_method] || 0) + 1;
+      acc[order.paymentMethod] = (acc[order.paymentMethod] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>);
+    }, {} as Record<PaymentMethod, number>);
 
     // Revenue diario
     const dailyRevenue = calculateDailyRevenue(orders);
@@ -69,9 +75,9 @@ export default function AnalyticsPage() {
       total_revenue: totalRevenue,
       avg_order_value: avgOrderValue,
       orders_by_type: {
-        mesa: ordersByType.mesa || 0,
-        domicilio: ordersByType.domicilio || 0,
-        recoger: ordersByType.recoger || 0
+        DINE_IN: ordersByType.DINE_IN || 0,
+        DELIVERY: ordersByType.DELIVERY || 0,
+        PICKUP: ordersByType.PICKUP || 0
       },
       orders_by_status: ordersByStatus,
       orders_by_payment: ordersByPayment,
@@ -80,50 +86,23 @@ export default function AnalyticsPage() {
     };
   }, []);
 
-  const loadAnalytics = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      // Obtener datos del usuario admin
-      const adminData = localStorage.getItem('admin_user');
-      if (adminData) {
-        const userData = JSON.parse(adminData);
-        setRestaurantId(userData.restaurant_id || 'ay-wey');
-      }
-
-      // Obtener todas las órdenes
-      const response = await apiService.getOrders(restaurantId);
-      const allOrders = response.orders;
-
-      // Filtrar órdenes por rango de fecha
+  useEffect(() => {
+    if (data?.ordersByRestaurant) {
+      const allOrders = data.ordersByRestaurant as GQLOrder[];
       const days = parseInt(dateRange);
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - days);
       
-      const filteredOrders = allOrders.filter(order => 
-        new Date(order.created_at) >= cutoffDate
-      );
+      const filteredOrders = allOrders.filter(order => new Date(order.createdAt) >= cutoffDate);
       
-      // Calcular analytics
       const calculatedAnalytics = calculateAnalytics(filteredOrders);
       setAnalytics(calculatedAnalytics);
-      
-    } catch (error) {
-      console.error('Error cargando analytics:', error);
-      setError('Error cargando los datos de analytics');
-    } finally {
-      setLoading(false);
     }
-  }, [dateRange, restaurantId, calculateAnalytics]);
+  }, [data, dateRange, calculateAnalytics]);
 
-  useEffect(() => {
-    loadAnalytics();
-  }, [dateRange, restaurantId, loadAnalytics]);
-
-  const calculateDailyRevenue = (orders: Order[]) => {
+  const calculateDailyRevenue = (orders: GQLOrder[]) => {
     const dailyData = orders.reduce((acc, order) => {
-      const date = new Date(order.created_at).toISOString().split('T')[0];
+      const date = new Date(order.createdAt).toISOString().split('T')[0];
       if (!acc[date]) {
         acc[date] = { revenue: 0, orders: 0 };
       }
@@ -138,14 +117,14 @@ export default function AnalyticsPage() {
       .slice(-7); // Últimos 7 días
   };
 
-  const calculateTopProducts = (orders: Order[]) => {
+  const calculateTopProducts = (orders: GQLOrder[]) => {
     const productData = orders.reduce((acc, order) => {
       order.products.forEach(product => {
         if (!acc[product.name]) {
           acc[product.name] = { quantity: 0, revenue: 0 };
         }
-        acc[product.name].quantity += product.cantidad;
-        acc[product.name].revenue += product.precio * product.cantidad;
+        acc[product.name].quantity += product.quantity;
+        acc[product.name].revenue += product.price * product.quantity;
       });
       return acc;
     }, {} as Record<string, { quantity: number; revenue: number }>);
@@ -164,7 +143,7 @@ export default function AnalyticsPage() {
     }).format(amount);
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: OrderStatus) => {
     const labels = {
       pending: 'Pendiente',
       confirmed: 'Confirmado',
@@ -176,7 +155,7 @@ export default function AnalyticsPage() {
     return labels[status as keyof typeof labels] || status;
   };
 
-  const getPaymentLabel = (method: string) => {
+  const getPaymentLabel = (method: PaymentMethod) => {
     const labels = {
       efectivo: 'Efectivo',
       tarjeta: 'Tarjeta',
@@ -187,22 +166,30 @@ export default function AnalyticsPage() {
     return labels[method as keyof typeof labels] || method;
   };
 
-  if (loading) {
+  if (queryLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+          <LoadingSpinner />
           <p className="text-gray-400">Cargando analytics...</p>
         </div>
       </div>
     );
   }
 
-  if (!analytics) {
+  if (queryError) {
     return (
       <div className="bg-red-600 text-white p-4 rounded-lg flex items-center gap-2">
         <span>❌</span>
-        {error || 'No se pudieron cargar los datos'}
+        {queryError.message || 'Error cargando los datos de analytics'}
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="bg-gray-800 rounded-lg p-8 text-center border border-gray-700">
+        <p className="text-gray-400">No hay datos de analytics disponibles para el período seleccionado.</p>
       </div>
     );
   }
@@ -225,7 +212,7 @@ export default function AnalyticsPage() {
             <option value="90">Últimos 90 días</option>
           </select>
           <button
-            onClick={loadAnalytics}
+            onClick={refetch}
             className="px-4 py-2 bg-yellow-600 text-black rounded hover:bg-yellow-700 transition-colors"
           >
             🔄 Actualizar
@@ -296,10 +283,10 @@ export default function AnalyticsPage() {
                 <div className="w-32 bg-gray-700 rounded-full h-2">
                   <div 
                     className="bg-blue-600 h-2 rounded-full" 
-                    style={{ width: `${(analytics.orders_by_type.mesa / analytics.total_orders) * 100}%` }}
+                    style={{ width: `${(analytics.orders_by_type.DINE_IN / analytics.total_orders) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-white font-semibold">{analytics.orders_by_type.mesa}</span>
+                <span className="text-white font-semibold">{analytics.orders_by_type.DINE_IN}</span>
               </div>
             </div>
             <div className="flex justify-between items-center">
@@ -308,10 +295,10 @@ export default function AnalyticsPage() {
                 <div className="w-32 bg-gray-700 rounded-full h-2">
                   <div 
                     className="bg-green-600 h-2 rounded-full" 
-                    style={{ width: `${(analytics.orders_by_type.domicilio / analytics.total_orders) * 100}%` }}
+                    style={{ width: `${(analytics.orders_by_type.DELIVERY / analytics.total_orders) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-white font-semibold">{analytics.orders_by_type.domicilio}</span>
+                <span className="text-white font-semibold">{analytics.orders_by_type.DELIVERY}</span>
               </div>
             </div>
             <div className="flex justify-between items-center">
@@ -320,10 +307,10 @@ export default function AnalyticsPage() {
                 <div className="w-32 bg-gray-700 rounded-full h-2">
                   <div 
                     className="bg-purple-600 h-2 rounded-full" 
-                    style={{ width: `${(analytics.orders_by_type.recoger / analytics.total_orders) * 100}%` }}
+                    style={{ width: `${(analytics.orders_by_type.PICKUP / analytics.total_orders) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-white font-semibold">{analytics.orders_by_type.recoger}</span>
+                <span className="text-white font-semibold">{analytics.orders_by_type.PICKUP}</span>
               </div>
             </div>
           </div>
@@ -335,7 +322,7 @@ export default function AnalyticsPage() {
           <div className="space-y-3">
             {Object.entries(analytics.orders_by_status).map(([status, count]) => (
               <div key={status} className="flex justify-between items-center">
-                <span className="text-gray-300">{getStatusLabel(status)}</span>
+                <span className="text-gray-300">{getStatusLabel(status as OrderStatus)}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-32 bg-gray-700 rounded-full h-2">
                     <div 
@@ -362,7 +349,7 @@ export default function AnalyticsPage() {
           <div className="space-y-3">
             {Object.entries(analytics.orders_by_payment).map(([method, count]) => (
               <div key={method} className="flex justify-between items-center">
-                <span className="text-gray-300">{getPaymentLabel(method)}</span>
+                <span className="text-gray-300">{getPaymentLabel(method as PaymentMethod)}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-32 bg-gray-700 rounded-full h-2">
                     <div 

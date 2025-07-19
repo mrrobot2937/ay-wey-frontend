@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { apiService, Order, Product } from '../../../services/api-service';
+import { apiService, Order, Product, OrderStatus } from '../../../services/api-service';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -8,7 +8,7 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [restaurantId, setRestaurantId] = useState('ay-wey');
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | ''>('');
   const [updating, setUpdating] = useState<string | null>(null);
 
   // Estados para el formulario de añadir producto
@@ -47,7 +47,7 @@ export default function AdminOrders() {
     loadData();
   }, [loadData]);
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       setUpdating(orderId);
       await apiService.updateOrderStatus(orderId, newStatus, restaurantId);
@@ -93,28 +93,28 @@ export default function AdminOrders() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors = {
-      pending: 'bg-yellow-600',
-      confirmed: 'bg-blue-600',
-      preparing: 'bg-orange-600',
-      ready: 'bg-green-600',
-      delivered: 'bg-gray-600',
-      cancelled: 'bg-red-600'
+  const getStatusColor = (status: OrderStatus) => {
+    const colors: { [key in OrderStatus]?: string } = {
+      PENDING: 'bg-yellow-600',
+      CONFIRMED: 'bg-blue-600',
+      PREPARING: 'bg-orange-600',
+      READY: 'bg-green-600',
+      DELIVERED: 'bg-gray-600',
+      CANCELLED: 'bg-red-600'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-600';
+    return colors[status] || 'bg-gray-600';
   };
 
-  const getStatusLabel = (status: string) => {
-    const labels = {
-      pending: 'Pendiente',
-      confirmed: 'Confirmado',
-      preparing: 'Preparando',
-      ready: 'Listo',
-      delivered: 'Entregado',
-      cancelled: 'Cancelado'
+  const getStatusLabel = (status: OrderStatus) => {
+    const labels: { [key in OrderStatus]?: string } = {
+      PENDING: 'Pendiente',
+      CONFIRMED: 'Confirmado',
+      PREPARING: 'Preparando',
+      READY: 'Listo',
+      DELIVERED: 'Entregado',
+      CANCELLED: 'Cancelado'
     };
-    return labels[status as keyof typeof labels] || status;
+    return labels[status] || status;
   };
 
   const getDeliveryIcon = (method: string) => {
@@ -158,26 +158,24 @@ export default function AdminOrders() {
     }
   };
 
-  const statusOptions = [
+  const statusOptions: { value: OrderStatus | ''; label: string }[] = [
     { value: '', label: 'Todos los estados' },
-    { value: 'pending', label: 'Pendiente' },
-    { value: 'confirmed', label: 'Confirmado' },
-    { value: 'preparing', label: 'Preparando' },
-    { value: 'ready', label: 'Listo' },
-    { value: 'delivered', label: 'Entregado' },
-    { value: 'cancelled', label: 'Cancelado' }
+    { value: 'PENDING', label: 'Pendiente' },
+    { value: 'CONFIRMED', label: 'Confirmado' },
+    { value: 'PREPARING', label: 'Preparando' },
+    { value: 'READY', label: 'Listo' },
+    { value: 'DELIVERED', label: 'Entregado' },
+    { value: 'CANCELLED', label: 'Cancelado' }
   ];
 
-  const nextStatusOptions = (currentStatus: string) => {
-    const flow = {
-      pending: ['confirmed', 'cancelled'],
-      confirmed: ['preparing', 'cancelled'],
-      preparing: ['ready', 'cancelled'],
-      ready: ['delivered'],
-      delivered: [],
-      cancelled: []
+  const nextStatusOptions = (currentStatus: OrderStatus): OrderStatus[] => {
+    const flow: { [key in OrderStatus]?: OrderStatus[] } = {
+      PENDING: ['CONFIRMED', 'CANCELLED'],
+      CONFIRMED: ['PREPARING', 'CANCELLED'],
+      PREPARING: ['READY', 'CANCELLED'],
+      READY: ['DELIVERED'],
     };
-    return flow[currentStatus as keyof typeof flow] || [];
+    return flow[currentStatus] || [];
   };
 
   if (loading) {
@@ -205,7 +203,7 @@ export default function AdminOrders() {
         <div className="flex gap-4 items-center">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as OrderStatus)}
             className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-yellow-400"
           >
             {statusOptions.map(option => (
@@ -272,13 +270,13 @@ export default function AdminOrders() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-400">Entrega</p>
-                      {order.deliveryMethod === 'mesa' && order.mesa && (
+                      {order.deliveryMethod === 'DINE_IN' && order.mesa && (
                         <p className="font-semibold text-white">Mesa: {order.mesa}</p>
                       )}
-                      {order.deliveryMethod === 'domicilio' && order.deliveryAddress && (
+                      {order.deliveryMethod === 'DELIVERY' && order.deliveryAddress && (
                         <p className="font-semibold text-white">{order.deliveryAddress}</p>
                       )}
-                      {order.deliveryMethod === 'recoger' && (
+                      {order.deliveryMethod === 'PICKUP' && (
                         <p className="font-semibold text-white">Para recoger en local</p>
                       )}
                     </div>

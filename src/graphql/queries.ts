@@ -146,6 +146,16 @@ export const GET_ORDER = gql`
   }
 `;
 
+// Query específica para el hook useOrders, para evitar conflictos
+export const GET_ORDERS_BY_RESTAURANT = gql`
+  ${ORDER_FRAGMENT}
+  query GetOrdersByRestaurant($restaurantId: String!) {
+    orders(restaurantId: $restaurantId) {
+      ...OrderFields
+    }
+  }
+`;
+
 // Obtener estadísticas del restaurante
 export const GET_RESTAURANT_STATS = gql`
   query GetRestaurantStats($restaurantId: String!) {

@@ -2,7 +2,7 @@
 import { useCart, CartItem } from "../../contexts/CartContext";
 import { useState } from "react";
 import Image from "next/image";
-import { apiService, CreateOrderData } from "../../services/api-service";
+import { apiService } from "../../services/api-service";
 import { generateNumericId } from "../../types/graphql";
 
 const paymentOptions = [
@@ -24,7 +24,6 @@ export default function CheckoutPage() {
   const [delivery, setDelivery] = useState(deliveryOptions[0].value);
   // Campos de cliente removidos para pedidos por mesero
   const [address, setAddress] = useState("");
-  const [terms, setTerms] = useState(false);
   const [coupon, setCoupon] = useState("");
   const [discount, setDiscount] = useState(0);
   const [couponApplied, setCouponApplied] = useState(false);
@@ -64,26 +63,26 @@ export default function CheckoutPage() {
     try {
       // Convertir productos del carrito al formato requerido por la API
       const productos = cart.map((item) => {
-        // Usar originalId si existe (ID real de GraphQL), sino usar id
         const productId = item.originalId || item.id;
-        
-        // Convertir string ID a número usando la misma función que usa el sistema
         const numericId = typeof productId === 'string' 
           ? generateNumericId(productId)
           : Number(productId);
         
         return {
           id: numericId,
-          nombre: getProductDisplayName(item),
+          // El 'nombre' del producto aquí no es crucial para el backend,
+          // pero lo mantenemos por si alguna lógica lo usa.
+          nombre: getProductDisplayName(item), 
           cantidad: item.quantity,
           precio: item.price
         };
       });
 
-      const orderData: CreateOrderData = {
-        nombre: "Cliente de mesa", // Assuming a default name for the API
-        telefono: "3000000000", // Assuming a default phone for the API
-        correo: "cliente@ay-wey.com", // Assuming a default email for the API
+      // El tipo exacto que espera apiService.createOrder
+      const orderData = {
+        nombre: "Cliente de mesa",
+        telefono: "3000000000",
+        correo: "cliente@ay-wey.com",
         direccion: delivery === "domicilio" ? address : "",
         mesa: delivery === "mesa" ? mesa : "",
         productos: productos,
@@ -316,36 +315,14 @@ export default function CheckoutPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-2 mt-4">
-              <input
-                type="checkbox"
-                id="terms"
-                checked={terms}
-                onChange={e => setTerms(e.target.checked)}
-                className="w-5 h-5 accent-yellow-400"
-                required
-              />
-              <label htmlFor="terms" className="text-sm text-gray-300">
-                Acepto los <a href="/privacidad" target="_blank" className="underline text-yellow-400">términos de privacidad</a>
-              </label>
-            </div>
-            
             {error && (
-              <div className="bg-red-500/10 border border-red-500 rounded-lg p-4">
-                <p className="text-red-400 font-bold">❌ {error}</p>
-              </div>
-            )}
-            
-            {loading && (
-              <div className="bg-yellow-400/10 border border-yellow-400 rounded-lg p-4">
-                <p className="text-yellow-400 font-bold">⏳ Guardando pedido...</p>
-              </div>
+              <p className="text-red-500 text-sm text-center">{error}</p>
             )}
             
             <button
               type="submit"
               className="w-full mt-6 py-4 rounded-full bg-green-400 text-black font-bold text-2xl shadow-lg hover:bg-green-300 transition-colors disabled:opacity-50"
-              disabled={cart.length === 0 || !terms || loading}
+              disabled={cart.length === 0 || loading}
             >
               {loading ? "Procesando..." : "Registrar Pedido"}
             </button>

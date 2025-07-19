@@ -110,16 +110,16 @@ export const useOrderNotifications = (
 
             // Filtrar órdenes relevantes para notificaciones 
             const relevantOrders = response.orders.filter(order =>
-                order.status === 'pending' || order.status === 'confirmed'
+                order.status === 'PENDING' || order.status === 'CONFIRMED'
             );
             console.log(`⏳ [${timestamp}] Órdenes relevantes:`, relevantOrders.length, relevantOrders.map(o => ({
-                id: o.order_id,
+                id: o.id,
                 status: o.status,
-                method: o.delivery_method,
-                customer: o.customer_name
+                method: o.deliveryMethod,
+                customer: o.customer.name
             })));
 
-            const currentOrderIds = new Set(relevantOrders.map(order => order.order_id));
+            const currentOrderIds = new Set(relevantOrders.map(order => order.id));
             console.log(`🆔 [${timestamp}] IDs actuales:`, Array.from(currentOrderIds));
             console.log(`🆔 [${timestamp}] IDs anteriores:`, Array.from(previousOrderIdsRef.current));
 

@@ -130,6 +130,7 @@ export default function AdminLayout({
               Órdenes
             </Link>
 
+            {/*
             <Link
               href="/admin/orders/mesa"
               className={`flex items-center px-4 py-2 rounded-lg transition-colors ml-4 ${
@@ -165,6 +166,7 @@ export default function AdminLayout({
               <span className="mr-3">🏪</span>
               Para Recoger
             </Link>
+            */}
 
             <Link
               href="/admin/products"
@@ -178,6 +180,7 @@ export default function AdminLayout({
               Productos
             </Link>
 
+            {/*
             <Link
               href="/admin/analytics"
               className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
@@ -189,6 +192,7 @@ export default function AdminLayout({
               <span className="mr-3">📈</span>
               Analytics
             </Link>
+            */}
           </nav>
 
           {/* Botón de logout */}
@@ -211,11 +215,13 @@ export default function AdminLayout({
           <h2 className="text-xl font-semibold text-yellow-400">
             {pathname === '/admin/dashboard' && 'Dashboard Ay Wey'}
             {pathname === '/admin/orders' && 'Todas las Órdenes'}
+            {/*
             {pathname === '/admin/orders/mesa' && 'Órdenes de Mesa'}
             {pathname === '/admin/orders/domicilio' && 'Órdenes de Domicilio'}
             {pathname === '/admin/orders/recoger' && 'Órdenes para Recoger'}
+            */}
             {pathname === '/admin/products' && 'Gestión de Productos'}
-            {pathname === '/admin/analytics' && 'Analytics'}
+            {/* {pathname === '/admin/analytics' && 'Analytics'} */}
           </h2>
           
           <div className="flex items-center space-x-4">

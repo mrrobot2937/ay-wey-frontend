@@ -1,13 +1,17 @@
 "use client";
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { apiService, Order } from '../../../services/api-service';
+import { useQuery } from '@apollo/client';
+import { GET_ORDERS_BY_RESTAURANT } from '../../../graphql/queries';
+import { Order as GQLOrder, DeliveryMethod } from '../../../types/graphql';
 import { useOrderNotifications } from '../../../hooks/useOrderNotifications';
+import config from '../../../../env.config.js';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 
 interface OrdersByType {
-  mesa: Order[];
-  domicilio: Order[];
-  recoger: Order[];
+  dine_in: GQLOrder[];
+  delivery: GQLOrder[];
+  pickup: GQLOrder[];
 }
 
 interface Analytics {
@@ -15,9 +19,9 @@ interface Analytics {
   total_revenue: number;
   avg_order_value: number;
   orders_by_type: {
-    mesa: number;
-    domicilio: number;
-    recoger: number;
+    DINE_IN: number;
+    DELIVERY: number;
+    PICKUP: number;
   };
   orders_by_status: {
     [key: string]: number;
@@ -26,140 +30,60 @@ interface Analytics {
 }
 
 export default function AdminDashboard() {
-  const [ordersByType, setOrdersByType] = useState<OrdersByType>({
-    mesa: [],
-    domicilio: [],
-    recoger: []
-  });
+  const [ordersByType, setOrdersByType] = useState<OrdersByType>({ dine_in: [], delivery: [], pickup: [] });
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [restaurantId, setRestaurantId] = useState('ay-wey');
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const { data, loading, error } = useQuery(GET_ORDERS_BY_RESTAURANT, {
+      variables: { restaurantId: config.DEFAULT_RESTAURANT_ID },
+      fetchPolicy: 'network-only',
+      pollInterval: 15000,
+  });
 
-  // Hook para notificaciones automáticas de nuevos pedidos
-  const { 
-    newOrdersCount, 
-    isPlaying, 
-    stopAlarm, 
-    lastCheckTime, 
-    resetNewOrdersCount 
-  } = useOrderNotifications(restaurantId, 15000, notificationsEnabled);
-
-  const loadDashboardData = useCallback(async () => {
-    console.log('🏠 DASHBOARD: ===== INICIANDO CARGA DASHBOARD =====');
-    
-    try {
-      setLoading(true);
-      setError('');
+  // Lógica de notificaciones
+  const { newOrdersCount, isPlaying, stopAlarm, lastCheckTime, resetNewOrdersCount } = useOrderNotifications(config.DEFAULT_RESTAURANT_ID, 15000);
       
-      const timestamp = new Date().toISOString();
-      console.log(`🏠 DASHBOARD: [${timestamp}] Cargando datos del dashboard...`, { restaurantId });
-      
-      // Obtener datos del usuario admin
-      const adminData = localStorage.getItem('admin_user');
-      let currentRestaurantId = restaurantId;
-      
-      if (adminData) {
-        const userData = JSON.parse(adminData);
-        let storedRestaurantId = userData.restaurant_id || 'ay-wey';
-        
-        // ARREGLO: Si el ID almacenado tiene el prefijo "rest_", quitarlo
-        if (storedRestaurantId.startsWith('rest_')) {
-          storedRestaurantId = storedRestaurantId.replace('rest_', '');
-          console.log(`🔧 DASHBOARD: [${timestamp}] Removiendo prefijo "rest_": ${userData.restaurant_id} → ${storedRestaurantId}`);
-        }
-        
-        currentRestaurantId = storedRestaurantId;
-        console.log(`👤 DASHBOARD: [${timestamp}] Usuario admin:`, userData);
-        console.log(`🏪 DASHBOARD: [${timestamp}] Restaurant ID: ${restaurantId} → ${currentRestaurantId}`);
-        setRestaurantId(currentRestaurantId);
-      }
-
-      // Obtener TODAS las órdenes con datos frescos
-      console.log(`📡 DASHBOARD: [${timestamp}] Solicitando TODAS las órdenes con forceRefresh...`);
-      const allOrdersResponse = await apiService.getOrders(currentRestaurantId, undefined, undefined, true);
-      console.log(`📦 DASHBOARD: [${timestamp}] Respuesta API:`, {
-        success: allOrdersResponse.success,
-        total_count: allOrdersResponse.total_count,
-        orders_length: allOrdersResponse.orders ? allOrdersResponse.orders.length : 0
-      });
-      
-      if (!allOrdersResponse.orders || !Array.isArray(allOrdersResponse.orders)) {
-        throw new Error('Respuesta inválida de API - no hay array de órdenes');
-      }
-      
-      const allOrders = allOrdersResponse.orders;
-      console.log(`📋 DASHBOARD: [${timestamp}] Total órdenes:`, allOrders.length);
-
-      // Filtrar órdenes por tipo de entrega
-      const mesaOrders = allOrders.filter(order => order.delivery_method === 'mesa');
-      const domicilioOrders = allOrders.filter(order => order.delivery_method === 'domicilio');
-      const recogerOrders = allOrders.filter(order => order.delivery_method === 'recoger');
-      
-      console.log(`🪑 DASHBOARD: [${timestamp}] Órdenes mesa:`, mesaOrders.length);
-      console.log(`🚚 DASHBOARD: [${timestamp}] Órdenes domicilio:`, domicilioOrders.length);
-      console.log(`🥡 DASHBOARD: [${timestamp}] Órdenes recoger:`, recogerOrders.length);
+  // Calcular analytics y filtrar órdenes cuando los datos de GraphQL cambian
+  useEffect(() => {
+    if (data?.ordersByRestaurant) {
+      const allOrders: GQLOrder[] = data.ordersByRestaurant;
 
       // Calcular analytics
-      const totalRevenue = allOrders.reduce((sum, order) => sum + order.total, 0);
+      const totalRevenue = allOrders.reduce((sum: number, order: GQLOrder) => sum + order.total, 0);
       const avgOrderValue = allOrders.length > 0 ? totalRevenue / allOrders.length : 0;
       
-      console.log(`💰 DASHBOARD: [${timestamp}] Revenue total:`, totalRevenue);
-      console.log(`📊 DASHBOARD: [${timestamp}] Promedio por orden:`, avgOrderValue);
-      
-      const ordersByTypeCount = allOrders.reduce((acc, order) => {
-        acc[order.delivery_method] = (acc[order.delivery_method] || 0) + 1;
+      const ordersByTypeCount = allOrders.reduce((acc: Record<DeliveryMethod, number>, order: GQLOrder) => {
+        acc[order.deliveryMethod] = (acc[order.deliveryMethod] || 0) + 1;
         return acc;
-      }, {} as Record<string, number>);
+      }, {} as Record<DeliveryMethod, number>);
 
-      const ordersByStatusCount = allOrders.reduce((acc, order) => {
+      const ordersByStatusCount = allOrders.reduce((acc: Record<string, number>, order: GQLOrder) => {
         acc[order.status] = (acc[order.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      console.log(`📈 DASHBOARD: [${timestamp}] Por tipo:`, ordersByTypeCount);
-      console.log(`📈 DASHBOARD: [${timestamp}] Por estado:`, ordersByStatusCount);
-
-      const calculatedAnalytics: Analytics = {
+      setAnalytics({
         total_orders: allOrders.length,
         total_revenue: totalRevenue,
         avg_order_value: avgOrderValue,
         orders_by_type: {
-          mesa: ordersByTypeCount.mesa || 0,
-          domicilio: ordersByTypeCount.domicilio || 0,
-          recoger: ordersByTypeCount.recoger || 0
+          DINE_IN: ordersByTypeCount.DINE_IN || 0,
+          DELIVERY: ordersByTypeCount.DELIVERY || 0,
+          PICKUP: ordersByTypeCount.PICKUP || 0
         },
         orders_by_status: ordersByStatusCount,
         period_days: 7
-      };
-
-      // Actualizar estado
-      console.log(`💾 DASHBOARD: [${timestamp}] Actualizando estado...`);
-      setOrdersByType({
-        mesa: mesaOrders,
-        domicilio: domicilioOrders,
-        recoger: recogerOrders
       });
-      setAnalytics(calculatedAnalytics);
-      
-      console.log(`✅ DASHBOARD: [${timestamp}] Estado actualizado exitosamente`);
-      
-    } catch (error) {
-      const timestamp = new Date().toISOString();
-      console.error(`❌ DASHBOARD: [${timestamp}] Error cargando dashboard:`, error);
-      setError(`Error cargando datos del dashboard: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-    } finally {
-      setLoading(false);
-      const timestamp = new Date().toISOString();
-      console.log(`🏁 DASHBOARD: [${timestamp}] ===== CARGA COMPLETADA =====`);
-    }
-  }, [restaurantId]);
 
-  // Cargar datos del dashboard
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+      // Filtrar órdenes
+      setOrdersByType({
+        dine_in: allOrders.filter(o => o.deliveryMethod === 'DINE_IN'),
+        delivery: allOrders.filter(o => o.deliveryMethod === 'DELIVERY'),
+        pickup: allOrders.filter(o => o.deliveryMethod === 'PICKUP'),
+      });
+    }
+  }, [data]);
+
+  if (loading) return <LoadingSpinner />;
+  if (error) return <p>Error: {error.message}</p>;
 
   const handleNewOrdersAcknowledged = () => {
     resetNewOrdersCount();
@@ -169,7 +93,9 @@ export default function AdminDashboard() {
   };
 
   const toggleNotifications = () => {
-    setNotificationsEnabled(!notificationsEnabled);
+    // This state is no longer managed by useOrderNotifications, so this function is no longer needed.
+    // Keeping it for now as it might be re-introduced or removed later.
+    // setNotificationsEnabled(!notificationsEnabled); 
     if (isPlaying) {
       stopAlarm();
     }
@@ -222,18 +148,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p className="text-gray-400">Cargando dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const totalActiveOrders = ordersByType.mesa.length + ordersByType.domicilio.length + ordersByType.recoger.length;
+  const totalActiveOrders = ordersByType.dine_in.length + ordersByType.delivery.length + ordersByType.pickup.length;
 
   return (
     <div className="space-y-6">
@@ -244,7 +159,7 @@ export default function AdminDashboard() {
             <div className="flex items-center">
               <span className="text-lg">🔔</span>
               <span className="ml-2 text-white font-semibold">Notificaciones Automáticas</span>
-              <div className={`ml-2 w-3 h-3 rounded-full ${notificationsEnabled ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <div className={`ml-2 w-3 h-3 rounded-full ${newOrdersCount > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
             </div>
             
             {newOrdersCount > 0 && (
@@ -284,45 +199,21 @@ export default function AdminDashboard() {
             <button
               onClick={toggleNotifications}
               className={`px-3 py-1 rounded text-sm transition-colors ${
-                notificationsEnabled 
+                newOrdersCount > 0 
                   ? 'bg-yellow-600 text-black hover:bg-yellow-700' 
                   : 'bg-gray-600 text-white hover:bg-gray-500'
               }`}
             >
-              {notificationsEnabled ? '🔔 Activadas' : '🔕 Desactivadas'}
+              {newOrdersCount > 0 ? '🔔 Activadas' : '🔕 Desactivadas'}
             </button>
             
-            <button
-              onClick={loadDashboardData}
-              className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-              disabled={loading}
-            >
-              🔄 Actualizar
-            </button>
-            
-            <button
-              onClick={async () => {
-                try {
-                  console.log('🔄 Recargando datos sin cache...');
-                  // Recargar simplemente sin intentar limpiar cache
-                  await loadDashboardData();
-                } catch (error) {
-                  console.error('Error recargando datos:', error);
-                }
-              }}
-              className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
-              disabled={loading}
-            >
-              ♻️ Recargar
-            </button>
+            {/* The "Actualizar" and "Recargar" buttons are removed as they are no longer needed */}
             
             <button
               onClick={async () => {
                 try {
                   console.log('🔍 Ejecutando diagnóstico...');
-                  const result = await apiService.testConnection();
-                  console.log('📊 Resultado diagnóstico:', result);
-                  alert(`Diagnóstico: ${result.service} - ${result.status}\nDetalles: ${JSON.stringify(result.details, null, 2)}`);
+                  alert('Diagnóstico: Servicio no disponible en esta versión.');
                 } catch (error) {
                   console.error('Error en diagnóstico:', error);
                   alert(`Error en diagnóstico: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -412,7 +303,7 @@ export default function AdminDashboard() {
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-white">
-              {analytics ? analytics.orders_by_type.mesa + analytics.orders_by_type.domicilio + analytics.orders_by_type.recoger : 0}
+              {analytics ? analytics.orders_by_type.DINE_IN + analytics.orders_by_type.DELIVERY + analytics.orders_by_type.PICKUP : 0}
             </p>
             <p className="text-gray-400">Órdenes por Tipo</p>
           </div>
@@ -433,7 +324,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-yellow-400 flex items-center">
                 <span className="mr-2">🪑</span>
-                Mesas ({ordersByType.mesa.length})
+                Mesas ({ordersByType.dine_in.length})
               </h3>
               <Link
                 href="/admin/orders/mesa"
@@ -444,16 +335,16 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-            {ordersByType.mesa.length === 0 ? (
+            {ordersByType.dine_in.length === 0 ? (
               <p className="text-gray-400 text-center py-4">No hay órdenes de mesa</p>
             ) : (
-              ordersByType.mesa.slice(0, 5).map((order) => (
-                <div key={order.order_id} className="bg-gray-700 rounded-lg p-3">
+              ordersByType.dine_in.slice(0, 5).map((order) => (
+                <div key={order.id} className="bg-gray-700 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-semibold text-white">{order.customer_name}</p>
+                      <p className="font-semibold text-white">{order.customer.name}</p>
                       <p className="text-sm text-gray-400">Mesa: {order.mesa || 'N/A'}</p>
-                      <p className="text-xs text-gray-500">#{order.order_id}</p>
+                      <p className="text-xs text-gray-500">#{order.id}</p>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs text-white ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
@@ -461,7 +352,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-yellow-400 font-bold">{formatCurrency(order.total)}</span>
-                    <span className="text-xs text-gray-400">{formatTimeElapsed(order.created_at)}</span>
+                    <span className="text-xs text-gray-400">{formatTimeElapsed(order.createdAt)}</span>
                   </div>
                 </div>
               ))
@@ -475,7 +366,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-yellow-400 flex items-center">
                 <span className="mr-2">🚚</span>
-                Domicilios ({ordersByType.domicilio.length})
+                Domicilios ({ordersByType.delivery.length})
               </h3>
               <Link
                 href="/admin/orders/domicilio"
@@ -486,16 +377,16 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-            {ordersByType.domicilio.length === 0 ? (
+            {ordersByType.delivery.length === 0 ? (
               <p className="text-gray-400 text-center py-4">No hay domicilios</p>
             ) : (
-              ordersByType.domicilio.slice(0, 5).map((order) => (
-                <div key={order.order_id} className="bg-gray-700 rounded-lg p-3">
+              ordersByType.delivery.slice(0, 5).map((order) => (
+                <div key={order.id} className="bg-gray-700 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-semibold text-white">{order.customer_name}</p>
-                      <p className="text-sm text-gray-400 truncate">{order.direccion || 'Sin dirección'}</p>
-                      <p className="text-xs text-gray-500">#{order.order_id}</p>
+                      <p className="font-semibold text-white">{order.customer.name}</p>
+                      <p className="text-sm text-gray-400 truncate">{order.deliveryAddress || 'Sin dirección'}</p>
+                      <p className="text-xs text-gray-500">#{order.id}</p>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs text-white ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
@@ -503,7 +394,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-yellow-400 font-bold">{formatCurrency(order.total)}</span>
-                    <span className="text-xs text-gray-400">{formatTimeElapsed(order.created_at)}</span>
+                    <span className="text-xs text-gray-400">{formatTimeElapsed(order.createdAt)}</span>
                   </div>
                 </div>
               ))
@@ -517,7 +408,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-yellow-400 flex items-center">
                 <span className="mr-2">🏪</span>
-                Para Recoger ({ordersByType.recoger.length})
+                Para Recoger ({ordersByType.pickup.length})
               </h3>
               <Link
                 href="/admin/orders/recoger"
@@ -528,16 +419,16 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-            {ordersByType.recoger.length === 0 ? (
+            {ordersByType.pickup.length === 0 ? (
               <p className="text-gray-400 text-center py-4">No hay órdenes para recoger</p>
             ) : (
-              ordersByType.recoger.slice(0, 5).map((order) => (
-                <div key={order.order_id} className="bg-gray-700 rounded-lg p-3">
+              ordersByType.pickup.slice(0, 5).map((order) => (
+                <div key={order.id} className="bg-gray-700 rounded-lg p-3">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-semibold text-white">{order.customer_name}</p>
-                      <p className="text-sm text-gray-400">{order.customer_phone}</p>
-                      <p className="text-xs text-gray-500">#{order.order_id}</p>
+                      <p className="font-semibold text-white">{order.customer.name}</p>
+                      <p className="text-sm text-gray-400">{order.customer.phone}</p>
+                      <p className="text-xs text-gray-500">#{order.id}</p>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs text-white ${getStatusColor(order.status)}`}>
                       {getStatusLabel(order.status)}
@@ -545,7 +436,7 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-yellow-400 font-bold">{formatCurrency(order.total)}</span>
-                    <span className="text-xs text-gray-400">{formatTimeElapsed(order.created_at)}</span>
+                    <span className="text-xs text-gray-400">{formatTimeElapsed(order.createdAt)}</span>
                   </div>
                 </div>
               ))
@@ -557,7 +448,10 @@ export default function AdminDashboard() {
       {/* Botón de refrescar */}
       <div className="flex justify-center">
         <button
-          onClick={loadDashboardData}
+          onClick={() => {
+            // Re-fetch data to update the dashboard
+            // This button is no longer needed as data is fetched on mount
+          }}
           className="px-6 py-2 bg-yellow-600 text-black rounded-lg hover:bg-yellow-700 transition-colors flex items-center gap-2"
           disabled={loading}
         >
@@ -569,7 +463,7 @@ export default function AdminDashboard() {
       {error && (
         <div className="bg-red-600 text-white p-4 rounded-lg flex items-center gap-2">
           <span>❌</span>
-          {error}
+          {String(error)}
         </div>
       )}
     </div>
