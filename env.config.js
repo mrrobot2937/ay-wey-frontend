@@ -1,7 +1,7 @@
 // Configuración de entorno para el frontend
 const config = {
-  // URL del backend GraphQL
-  GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:8000/graphql',
+  // URL del backend GraphQL - Forzado a producción
+  GRAPHQL_URL: 'https://choripam-backend-real.vercel.app/graphql',
   
   // Configuración de desarrollo
   DEBUG_MODE: process.env.NEXT_PUBLIC_DEBUG_MODE === 'true',
