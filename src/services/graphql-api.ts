@@ -10,7 +10,8 @@ import {
     DELETE_PRODUCT,
     CREATE_ORDER,
     UPDATE_ORDER_STATUS,
-    CREATE_CATEGORY
+    CREATE_CATEGORY,
+    ADD_PRODUCT_TO_ORDER
 } from '../graphql/queries';
 import {
     Product,
@@ -53,7 +54,7 @@ class GraphQLApiService {
      * Productos
      */
     async getProducts(restaurantId: string = this.defaultRestaurantId, category?: string): Promise<{
-        products: LegacyProduct[];
+        products: Product[];
         restaurant_id: string;
         total: number;
     }> {
@@ -66,13 +67,7 @@ class GraphQLApiService {
                 fetchPolicy: 'cache-first'
             });
 
-            console.log(`📊 Respuesta GraphQL:`, data);
-            console.log(`📦 Productos en respuesta:`, data.products);
-
             let products: Product[] = data.products || [];
-
-            console.log(`🔍 Productos antes del filtro:`, products.length);
-            console.log(`🔍 Primeros productos:`, products.slice(0, 3));
 
             // Filtrar por categoría si se especifica
             if (category) {
@@ -81,18 +76,12 @@ class GraphQLApiService {
                         ? p.category.id === category || p.category.name === category
                         : p.category === category
                 );
-                console.log(`🔍 Productos después del filtro por categoría:`, products.length);
             }
 
-            const legacyProducts = products.map(convertProductToLegacy);
-
-            console.log(`✅ ${legacyProducts.length} productos obtenidos exitosamente`);
-            console.log(`🔍 Primeros productos legacy:`, legacyProducts.slice(0, 3));
-
             return {
-                products: legacyProducts,
+                products: products,
                 restaurant_id: restaurantId,
-                total: legacyProducts.length
+                total: products.length
             };
         } catch (error) {
             console.error('❌ Error obteniendo productos:', error);
@@ -101,28 +90,15 @@ class GraphQLApiService {
     }
 
     async getProduct(productId: string, restaurantId: string = this.defaultRestaurantId): Promise<{
-        product: LegacyProduct;
+        product: Product;
         restaurant_id: string;
     }> {
         try {
             console.log(`🔄 Obteniendo producto: ${productId}`);
 
-            // Si el productId es numérico, necesitamos encontrar el ID original
-            let actualProductId = productId;
-            if (!isNaN(Number(productId))) {
-                // Es un ID numérico, necesitamos obtener todos los productos y encontrar el original
-                const productsResponse = await this.getProducts(restaurantId);
-                const legacyProduct = productsResponse.products.find(p => p.id === Number(productId));
-                if (legacyProduct?.originalId) {
-                    actualProductId = legacyProduct.originalId;
-                } else {
-                    throw new Error(`Producto no encontrado: ${productId}`);
-                }
-            }
-
             const { data } = await apolloClient.query({
                 query: GET_PRODUCT,
-                variables: { productId: actualProductId },
+                variables: { productId },
                 fetchPolicy: 'cache-first'
             });
 
@@ -130,12 +106,8 @@ class GraphQLApiService {
                 throw new Error(`Producto no encontrado: ${productId}`);
             }
 
-            const legacyProduct = convertProductToLegacy(data.product);
-
-            console.log(`✅ Producto obtenido exitosamente: ${legacyProduct.name}`);
-
             return {
-                product: legacyProduct,
+                product: data.product,
                 restaurant_id: restaurantId
             };
         } catch (error) {
@@ -194,84 +166,26 @@ class GraphQLApiService {
     }
 
     async updateProduct(
-        productId: number,
-        productData: Partial<CreateProductData>,
-        restaurantId: string = this.defaultRestaurantId,
-        originalId?: string
+        productId: string,
+        productData: Partial<UpdateProductInput>,
+        restaurantId: string = this.defaultRestaurantId
     ): Promise<{ success: boolean; message: string }> {
         try {
-            console.log(`🔄 Actualizando producto: ${productId}`, { originalId, restaurantId });
+            console.log(`🔄 Actualizando producto: ${productId}`);
 
-            // Usar el originalId si está disponible, sino buscar en productos
-            let actualProductId = originalId;
-            if (!actualProductId) {
-                console.log(`🔍 Buscando originalId para producto ${productId}...`);
-                const productsResponse = await this.getProducts(restaurantId);
-                console.log(`📊 Total productos encontrados: ${productsResponse.products.length}`);
-
-                // Debug: mostrar algunos IDs para entender el formato
-                if (productsResponse.products.length > 0) {
-                    console.log(`🔍 Primeros productos:`, productsResponse.products.slice(0, 3).map(p => ({
-                        id: p.id,
-                        originalId: p.originalId,
-                        name: p.name
-                    })));
-                }
-
-                const legacyProduct = productsResponse.products.find(p => p.id === productId);
-                console.log(`🔍 Producto buscado con ID ${productId}:`, legacyProduct ? {
-                    id: legacyProduct.id,
-                    originalId: legacyProduct.originalId,
-                    name: legacyProduct.name
-                } : 'NO ENCONTRADO');
-
-                if (!legacyProduct?.originalId) {
-                    // Intentar búsqueda más flexible
-                    const alternativeProduct = productsResponse.products.find(p =>
-                        String(p.id) === String(productId) || p.originalId === String(productId)
-                    );
-
-                    if (alternativeProduct?.originalId) {
-                        console.log(`✅ Producto encontrado con búsqueda alternativa: ${alternativeProduct.originalId}`);
-                        actualProductId = alternativeProduct.originalId;
-                    } else {
-                        console.error(`❌ Producto no encontrado. Búsquedas intentadas:`, {
-                            productIdBuscado: productId,
-                            tipoProductId: typeof productId,
-                            totalProductos: productsResponse.products.length,
-                            productosIds: productsResponse.products.map(p => ({ id: p.id, tipo: typeof p.id }))
-                        });
-                        throw new Error(`Producto no encontrado: ${productId}`);
-                    }
-                } else {
-                    actualProductId = legacyProduct.originalId;
-                }
-            }
-
-            console.log(`🎯 Usando actualProductId: ${actualProductId}`);
-
-
-            const input: UpdateProductInput = {};
-            if (productData.name !== undefined) input.name = productData.name;
-            if (productData.description !== undefined) input.description = productData.description;
-            if (productData.price !== undefined) input.price = productData.price;
-            if (productData.image_url !== undefined) input.imageUrl = productData.image_url;
-            if (productData.available !== undefined) input.available = productData.available;
-            if (productData.category !== undefined) input.categoryId = productData.category;
-            if (productData.variants !== undefined) input.variants = productData.variants;
+            const input: UpdateProductInput = { ...productData };
 
             const { data } = await apolloClient.mutate({
                 mutation: UPDATE_PRODUCT,
-                variables: { productId: actualProductId, input },
+                variables: { id: productId, input },
                 refetchQueries: [
                     { query: GET_PRODUCTS, variables: { restaurantId } }
                 ]
             });
 
             const result = data.updateProduct;
-
             if (result.success) {
-                console.log(`✅ Producto actualizado exitosamente: ${actualProductId}`);
+                console.log(`✅ Producto actualizado exitosamente`);
                 return {
                     success: true,
                     message: result.message
@@ -286,36 +200,22 @@ class GraphQLApiService {
     }
 
     async deleteProduct(
-        productId: number,
-        restaurantId: string = this.defaultRestaurantId,
-        originalId?: string
+        productId: string,
+        restaurantId: string = this.defaultRestaurantId
     ): Promise<{ success: boolean; message: string }> {
         try {
             console.log(`🔄 Eliminando producto: ${productId}`);
-
-            // Usar el originalId si está disponible, sino buscar en productos
-            let actualProductId = originalId;
-            if (!actualProductId) {
-                const productsResponse = await this.getProducts(restaurantId);
-                const legacyProduct = productsResponse.products.find(p => p.id === productId);
-                if (!legacyProduct?.originalId) {
-                    throw new Error(`Producto no encontrado: ${productId}`);
-                }
-                actualProductId = legacyProduct.originalId;
-            }
-
             const { data } = await apolloClient.mutate({
                 mutation: DELETE_PRODUCT,
-                variables: { productId: actualProductId },
+                variables: { id: productId, restaurantId },
                 refetchQueries: [
                     { query: GET_PRODUCTS, variables: { restaurantId } }
                 ]
             });
 
             const result = data.deleteProduct;
-
             if (result.success) {
-                console.log(`✅ Producto eliminado exitosamente: ${actualProductId}`);
+                console.log(`✅ Producto eliminado exitosamente`);
                 return {
                     success: true,
                     message: result.message
@@ -380,79 +280,52 @@ class GraphQLApiService {
     ): Promise<{
         success: boolean;
         restaurant_id: string;
-        orders: LegacyOrder[];
+        orders: Order[];
         total_count: number;
     }> {
         try {
-            console.log(`🔄 Obteniendo pedidos para restaurante: ${restaurantId}`, {
-                status,
-                limit,
-                forceRefresh,
-                timestamp: new Date().toISOString()
-            });
-
-            // SIEMPRE usar network-only para órdenes - los datos deben ser frescos
-            const fetchPolicy = 'network-only';
-            console.log(`📡 Política de cache: ${fetchPolicy}`);
-
-            // NO usar clearCache que causa problemas - solo usar network-only
-            console.log('🌐 Obteniendo datos frescos directamente del servidor...');
+            console.log(`🔄 Obteniendo órdenes...`, { restaurantId, status, limit });
 
             const { data } = await apolloClient.query({
                 query: GET_ORDERS,
                 variables: { restaurantId, status, limit },
-                fetchPolicy: fetchPolicy,
-                errorPolicy: 'all'
+                fetchPolicy: forceRefresh ? 'network-only' : 'cache-first'
             });
-
-            if (!data) {
-                throw new Error('No se recibieron datos del servidor GraphQL');
-            }
 
             const orders: Order[] = data.orders || [];
-            const legacyOrders = orders.map(convertOrderToLegacy);
 
-            console.log(`✅ ${legacyOrders.length} pedidos obtenidos exitosamente`, {
-                timestamp: new Date().toISOString(),
-                orderIds: legacyOrders.map(o => o.order_id),
-                statuses: legacyOrders.map(o => o.status),
-                deliveryMethods: legacyOrders.map(o => o.delivery_method),
-                sample: legacyOrders.slice(0, 3).map(o => ({
-                    id: o.order_id,
-                    status: o.status,
-                    method: o.delivery_method,
-                    customer: o.customer_name
-                }))
-            });
+            console.log(`✅ ${orders.length} órdenes obtenidas exitosamente`);
 
             return {
                 success: true,
                 restaurant_id: restaurantId,
-                orders: legacyOrders,
-                total_count: legacyOrders.length
+                orders: orders,
+                total_count: orders.length
             };
         } catch (error) {
-            console.error('❌ Error obteniendo pedidos:', error);
-            throw new Error(`Error obteniendo pedidos: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+            console.error('❌ Error obteniendo órdenes:', error);
+            throw new Error(`Error obteniendo órdenes: ${error instanceof Error ? error.message : 'Error desconocido'}`);
         }
     }
 
-    async getOrderStatus(orderId: string, restaurantId: string = this.defaultRestaurantId): Promise<LegacyOrder> {
+    async getOrderStatus(orderId: string, restaurantId: string = this.defaultRestaurantId): Promise<Order> {
         try {
-            console.log(`🔄 Obteniendo estado del pedido: ${orderId}`);
+            console.log(`🔄 Obteniendo estado de orden: ${orderId}`);
+            const { data } = await apolloClient.query({
+                query: GET_ORDERS, // Reutilizamos la query de órdenes
+                variables: { restaurantId }
+            });
 
-            const ordersResponse = await this.getOrders(restaurantId);
-            const order = ordersResponse.orders.find(o => o.order_id === orderId);
+            const order = data.orders.find((o: Order) => o.id === orderId);
 
             if (!order) {
-                throw new Error(`Pedido no encontrado: ${orderId}`);
+                throw new Error(`Orden no encontrada: ${orderId}`);
             }
 
-            console.log(`✅ Estado del pedido obtenido: ${order.status}`);
             return order;
         } catch (error) {
-            console.error('❌ Error obteniendo estado del pedido:', error);
-            throw new Error(`Error obteniendo estado del pedido: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+            console.error('❌ Error obteniendo estado de orden:', error);
+            throw new Error(`Error obteniendo estado de orden: ${error instanceof Error ? error.message : 'Error desconocido'}`);
         }
     }
 
@@ -462,18 +335,15 @@ class GraphQLApiService {
         restaurantId: string = this.defaultRestaurantId
     ): Promise<{ success: boolean; message: string }> {
         try {
-            console.log(`🔄 Actualizando estado del pedido: ${orderId} -> ${status}`);
-
+            console.log(`🔄 Actualizando estado de orden: ${orderId} a ${status}`);
             const { data } = await apolloClient.mutate({
                 mutation: UPDATE_ORDER_STATUS,
-                variables: { orderId, status },
+                variables: { orderId, status, restaurantId }, // <-- AÑADIR restaurantId aquí
                 refetchQueries: [
                     { query: GET_ORDERS, variables: { restaurantId } }
                 ]
             });
-
             const result = data.updateOrderStatus;
-
             if (result.success) {
                 console.log(`✅ Estado del pedido actualizado exitosamente`);
                 return {
@@ -486,6 +356,38 @@ class GraphQLApiService {
         } catch (error) {
             console.error('❌ Error actualizando estado del pedido:', error);
             throw new Error(`Error actualizando estado del pedido: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+        }
+    }
+
+    async addProductToOrder(
+        orderId: string,
+        productId: string,
+        quantity: number,
+        restaurantId: string = this.defaultRestaurantId
+    ): Promise<{ success: boolean; message: string; order?: any }> {
+        try {
+            console.log(`🔄 Añadiendo producto a la orden: ${orderId}`);
+            const { data } = await apolloClient.mutate({
+                mutation: ADD_PRODUCT_TO_ORDER,
+                variables: { orderId, productId, quantity, restaurantId },
+                refetchQueries: [
+                    { query: GET_ORDERS, variables: { restaurantId } }
+                ]
+            });
+            const result = data.addProductToOrder;
+            if (result.success) {
+                console.log(`✅ Producto añadido a la orden exitosamente: ${orderId}`);
+                return {
+                    success: true,
+                    message: result.message,
+                    order: result.order
+                };
+            } else {
+                throw new Error(result.message || 'Error desconocido al añadir producto');
+            }
+        } catch (error) {
+            console.error('❌ Error añadiendo producto a la orden:', error);
+            throw new Error(`Error añadiendo producto a la orden: ${error instanceof Error ? error.message : 'Error desconocido'}`);
         }
     }
 

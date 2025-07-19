@@ -1,42 +1,51 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { apiService, Order } from '../../../services/api-service';
+import { apiService, Order, Product } from '../../../services/api-service';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [restaurantId, setRestaurantId] = useState('ay-wey');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [updating, setUpdating] = useState<string | null>(null);
 
-  const loadOrders = useCallback(async () => {
+  // Estados para el formulario de añadir producto
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [addingProductTo, setAddingProductTo] = useState<string | null>(null);
+
+
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
       
-      // Obtener datos del usuario admin
       const adminData = localStorage.getItem('admin_user');
-      if (adminData) {
-        const userData = JSON.parse(adminData);
-        setRestaurantId(userData.restaurant_id || 'ay-wey');
-      }
+      const currentRestaurantId = adminData ? JSON.parse(adminData).restaurant_id : 'ay-wey';
+      setRestaurantId(currentRestaurantId);
 
-      const response = await apiService.getOrders('ay-wey', statusFilter || undefined);
-      setOrders(response.orders.filter(order => order.restaurant_id === 'ay-wey'));
+      const [ordersResponse, productsResponse] = await Promise.all([
+        apiService.getOrders(currentRestaurantId, statusFilter || undefined),
+        apiService.getProducts(currentRestaurantId)
+      ]);
+
+      // Ya no se necesita el filtro de restaurant_id porque la API lo hace
+      setOrders(ordersResponse.orders);
+      setProducts(productsResponse.products);
       
     } catch (error) {
-      console.error('Error cargando órdenes:', error);
-      setError('Error cargando las órdenes');
+      console.error('Error cargando datos:', error);
+      setError('Error cargando los datos del dashboard');
     } finally {
       setLoading(false);
     }
   }, [statusFilter]);
 
   useEffect(() => {
-    loadOrders();
-    // REMOVIDO: Intervalo duplicado - usar solo el hook de notificaciones
-  }, [loadOrders]);
+    loadData();
+  }, [loadData]);
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
@@ -45,7 +54,7 @@ export default function AdminOrders() {
       
       // Actualizar la orden en el estado local
       setOrders(orders.map(order => 
-        order.order_id === orderId 
+        order.id === orderId 
           ? { ...order, status: newStatus }
           : order
       ));
@@ -55,6 +64,32 @@ export default function AdminOrders() {
       alert('Error actualizando el estado de la orden');
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleAddProduct = async (orderId: string) => {
+    if (!selectedProduct || quantity <= 0) {
+      alert("Por favor, selecciona un producto y una cantidad válida.");
+      return;
+    }
+
+    try {
+      setAddingProductTo(orderId);
+      
+      await apiService.addProductToOrder(orderId, selectedProduct, quantity, restaurantId);
+
+      // Recargar los datos para ver los cambios
+      await loadData();
+      
+      // Resetear formulario
+      setSelectedProduct('');
+      setQuantity(1);
+
+    } catch (error) {
+      console.error("Error añadiendo producto a la orden:", error);
+      alert("Hubo un error al añadir el producto. Inténtalo de nuevo.");
+    } finally {
+      setAddingProductTo(null);
     }
   };
 
@@ -181,7 +216,7 @@ export default function AdminOrders() {
           </select>
           
           <button
-            onClick={loadOrders}
+            onClick={loadData}
             className="px-4 py-2 bg-yellow-600 text-black rounded-lg hover:bg-yellow-700 transition-colors"
             disabled={loading}
           >
@@ -205,22 +240,22 @@ export default function AdminOrders() {
       ) : (
         <div className="grid gap-6">
           {orders.map((order) => (
-            <div key={order.order_id} className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div key={order.id} className="bg-gray-800 rounded-lg border border-gray-700 p-6">
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Información principal */}
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-white">#{order.order_id}</h3>
-                      <p className="text-gray-400 text-sm">{formatTimeElapsed(order.created_at)} atrás</p>
+                      <h3 className="text-xl font-bold text-white">#{order.id.substring(0, 8)}</h3>
+                      <p className="text-gray-400 text-sm">{formatTimeElapsed(order.createdAt)} atrás</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`px-3 py-1 rounded-full text-sm text-white ${getStatusColor(order.status)}`}>
                         {getStatusLabel(order.status)}
                       </span>
                       <span className="px-3 py-1 rounded-full text-sm bg-gray-700 text-white flex items-center gap-1">
-                        {getDeliveryIcon(order.delivery_method)}
-                        {getDeliveryLabel(order.delivery_method)}
+                        {getDeliveryIcon(order.deliveryMethod)}
+                        {getDeliveryLabel(order.deliveryMethod)}
                       </span>
                     </div>
                   </div>
@@ -229,64 +264,89 @@ export default function AdminOrders() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <p className="text-sm text-gray-400">Cliente</p>
-                      <p className="font-semibold text-white">{order.customer_name}</p>
-                      <p className="text-sm text-gray-300">{order.customer_phone}</p>
-                      {order.customer_email && (
-                        <p className="text-sm text-gray-300">{order.customer_email}</p>
+                      <p className="font-semibold text-white">{order.customer.name}</p>
+                      <p className="text-sm text-gray-300">{order.customer.phone}</p>
+                      {order.customer.email && (
+                        <p className="text-sm text-gray-300">{order.customer.email}</p>
                       )}
                     </div>
                     <div>
                       <p className="text-sm text-gray-400">Entrega</p>
-                      {order.delivery_method === 'mesa' && order.mesa && (
+                      {order.deliveryMethod === 'mesa' && order.mesa && (
                         <p className="font-semibold text-white">Mesa: {order.mesa}</p>
                       )}
-                      {order.delivery_method === 'domicilio' && order.direccion && (
-                        <p className="font-semibold text-white">{order.direccion}</p>
+                      {order.deliveryMethod === 'domicilio' && order.deliveryAddress && (
+                        <p className="font-semibold text-white">{order.deliveryAddress}</p>
                       )}
-                      {order.delivery_method === 'recoger' && (
+                      {order.deliveryMethod === 'recoger' && (
                         <p className="font-semibold text-white">Para recoger en local</p>
                       )}
                     </div>
                   </div>
 
-                  {/* Productos */}
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-400 mb-2">Productos ({order.products.length})</p>
-                    <div className="space-y-1">
-                      {order.products.map((product, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm">
-                          <span className="text-gray-300">
-                            {product.nombre || product.name || `Producto ${product.id}`} x{product.cantidad}
-                          </span>
-                          <span className="text-yellow-400 font-semibold">
-                            {formatCurrency(product.precio * product.cantidad)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                  {/* Productos y Total */}
+                  <div className="space-y-2">
+                    {order.products.map(product => (
+                      <div key={product.id} className="flex justify-between items-center text-sm">
+                        <span>
+                          {product.name}
+                          <span className="font-semibold text-yellow-400"> x{product.quantity}</span>
+                        </span>
+                        <span className="font-mono">{formatCurrency(product.price * product.quantity)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-600 flex justify-between items-center">
+                    <span className="text-lg font-bold">Total</span>
+                    <span className="text-xl font-bold text-yellow-400">{formatCurrency(order.total)}</span>
                   </div>
 
-                  {/* Total */}
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-700">
-                    <span className="text-lg font-bold text-white">Total</span>
-                    <span className="text-2xl font-bold text-yellow-400">
-                      {formatCurrency(order.total)}
-                    </span>
+                  {/* FORMULARIO PARA AÑADIR PRODUCTO */}
+                  <div className="mt-6 pt-4 border-t border-dashed border-gray-600">
+                    <h4 className="text-sm font-semibold text-gray-300 mb-2">Añadir Producto a la Orden</h4>
+                    <div className="flex gap-2">
+                      <select 
+                        className="flex-grow bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm"
+                        value={selectedProduct}
+                        onChange={(e) => setSelectedProduct(e.target.value)}
+                        disabled={addingProductTo === order.id}
+                      >
+                        <option value="">Seleccionar producto...</option>
+                        {products.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} - {formatCurrency(p.price)}</option>
+                        ))}
+                      </select>
+                      <input 
+                        type="number"
+                        min="1"
+                        className="w-20 bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Number(e.target.value))}
+                        disabled={addingProductTo === order.id}
+                      />
+                      <button
+                        onClick={() => handleAddProduct(order.id)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-700 disabled:bg-gray-500"
+                        disabled={addingProductTo === order.id || !selectedProduct}
+                      >
+                        {addingProductTo === order.id ? 'Añadiendo...' : 'Añadir'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Acciones */}
-                <div className="lg:w-64">
+                {/* Acciones de estado */}
+                <div className="lg:w-64 flex-shrink-0 space-y-2">
                   <p className="text-sm text-gray-400 mb-2">Cambiar estado</p>
                   <div className="space-y-2">
                     {nextStatusOptions(order.status).map((status) => (
                       <button
                         key={status}
-                        onClick={() => updateOrderStatus(order.order_id, status)}
-                        disabled={updating === order.order_id}
+                        onClick={() => updateOrderStatus(order.id, status)}
+                        disabled={updating === order.id}
                         className={`w-full px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${getStatusColor(status)} text-white hover:opacity-80 disabled:opacity-50`}
                       >
-                        {updating === order.order_id ? (
+                        {updating === order.id ? (
                           <div className="flex items-center justify-center gap-2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                             Actualizando...

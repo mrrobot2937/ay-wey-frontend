@@ -137,6 +137,18 @@ class ApiService {
         }
     }
 
+    async addProductToOrder(orderId: string, productId: string, quantity: number, restaurantId: string = 'ay-wey') {
+        console.log(`🔄 [GraphQL] Añadiendo producto a la orden...`, { orderId, productId, quantity, restaurantId });
+        try {
+            const result = await this.graphqlService.addProductToOrder(orderId, productId, quantity, restaurantId);
+            console.log(`✅ [GraphQL] Producto añadido a la orden exitosamente`);
+            return result;
+        } catch (error) {
+            console.error(`❌ [GraphQL] Error añadiendo producto a la orden:`, error);
+            throw error;
+        }
+    }
+
     /**
      * Métodos de categorías y estadísticas
      */
@@ -228,4 +240,4 @@ const apiService = new ApiService();
 export { apiService };
 
 // Exportar tipos desde el servicio GraphQL para compatibilidad
-export type { LegacyOrder as Order, LegacyProduct as Product, LegacyCreateOrderData as CreateOrderData } from '../types/graphql'; 
+export type { Order, Product, CreateOrderInput as CreateOrderData } from '../types/graphql'; 

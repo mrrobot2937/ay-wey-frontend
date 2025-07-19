@@ -220,13 +220,31 @@ export const CREATE_ORDER = gql`
 
 // Actualizar estado del pedido
 export const UPDATE_ORDER_STATUS = gql`
-  mutation UpdateOrderStatus($orderId: String!, $status: String!) {
-    updateOrderStatus(orderId: $orderId, status: $status) {
+  mutation UpdateOrderStatus($orderId: String!, $status: String!, $restaurantId: String!) {
+    updateOrderStatus(orderId: $orderId, status: $status, restaurantId: $restaurantId) {
       success
       message
-      id
     }
   }
+`;
+
+export const ADD_PRODUCT_TO_ORDER = gql`
+    mutation AddProductToOrder($orderId: String!, $productId: String!, $quantity: Int!, $restaurantId: String!) {
+        addProductToOrder(orderId: $orderId, productId: $productId, quantity: $quantity, restaurantId: $restaurantId) {
+            success
+            message
+            order {
+                id
+                total
+                products {
+                    id
+                    name
+                    quantity
+                    price
+                }
+            }
+        }
+    }
 `;
 
 // Eliminar pedido

@@ -267,27 +267,28 @@ export function convertLegacyOrderDataToGraphQL(data: LegacyCreateOrderData, res
 }
 
 /**
- * Convierte datos de pedido legacy al formato GraphQL con búsqueda de IDs originales
+ * Convierte datos de pedido legacy al formato GraphQL, pero usando los IDs originales
+ * de los productos para la mutación.
  */
 export function convertLegacyOrderDataToGraphQLWithOriginalIds(
     data: LegacyCreateOrderData,
-    products: LegacyProduct[],
+    products: Product[], // Cambiado de LegacyProduct[] a Product[]
     restaurantId: string = 'ay-wey'
 ): CreateOrderInput {
     return {
         customerName: data.nombre,
         customerPhone: data.telefono,
         customerEmail: data.correo,
-        restaurantId,
-        products: data.productos.map(p => {
-            // Buscar el producto por hash numérico para obtener el ID original
-            const product = products.find(prod => prod.id === p.id);
-            const originalId = product?.originalId;
-
+        restaurantId: restaurantId,
+        products: data.productos.map(item => {
+            // El ID que viene de `data.productos` es numérico, pero ya no lo usamos.
+            // La información real está en el array de `products`.
+            // Buscamos el producto por su ID (string)
+            const product = products.find(p => generateNumericId(p.id) === item.id);
             return {
-                id: originalId || p.id.toString(), // Usar ID original si existe, sino el hash como string
-                quantity: p.cantidad,
-                price: p.precio
+                id: product ? product.id : String(item.id), // Usar el ID de GraphQL (string)
+                quantity: item.cantidad,
+                price: item.precio
             };
         }),
         total: data.total,
@@ -299,7 +300,7 @@ export function convertLegacyOrderDataToGraphQLWithOriginalIds(
 }
 
 /**
- * Genera un ID numérico único basado en un string
+ * Genera un ID numérico a partir de un string (hash simple)
  */
 export function generateNumericId(str: string): number {
     let hash = 0;
