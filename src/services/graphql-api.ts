@@ -38,6 +38,22 @@ interface CreateProductData {
     }>;
 }
 
+interface LegacyCreateOrderData {
+    nombre: string;
+    telefono: string;
+    correo: string;
+    productos: Array<{
+        id: number;
+        cantidad: number;
+        precio: number;
+    }>;
+    total: number;
+    metodo_pago: string;
+    modalidad_entrega: string;
+    mesa?: string;
+    direccion?: string;
+}
+
 /**
  * Servicio GraphQL que mantiene compatibilidad con la API REST anterior
  * Permite migración gradual del frontend sin romper funcionalidad existente
@@ -228,20 +244,31 @@ class GraphQLApiService {
      * Métodos de pedidos
      */
     async createOrder(
-        orderData: CreateOrderInput
+        orderData: LegacyCreateOrderData,
+        restaurantId: string = this.defaultRestaurantId
     ): Promise<{ success: boolean; order_id: string; message: string }> {
-        console.log(`[GraphQL] Creando orden para ${orderData.customerName}...`);
-
         try {
+            console.log(`🔄 Creando pedido para: ${orderData.nombre}`);
+
+            // Obtener productos para buscar IDs originales
+            const productsResponse = await this.getProducts(restaurantId);
+            const input = this.convertLegacyOrderDataToGraphQLWithOriginalIds(orderData, productsResponse.products, restaurantId);
+
+            console.log(`🔍 Productos en orden:`, orderData.productos.map((p: { id: number; cantidad: number }) => ({ id: p.id, cantidad: p.cantidad })));
+            console.log(`🔍 IDs originales encontrados:`, input.products.map((p: { id: string; quantity: number }) => ({ id: p.id, quantity: p.quantity })));
+
             const { data } = await apolloClient.mutate({
                 mutation: CREATE_ORDER,
-                variables: {
-                    input: orderData
-                }
+                variables: { input },
+                refetchQueries: [
+                    { query: GET_ORDERS, variables: { restaurantId } }
+                ]
             });
 
             const result = data.createOrder;
+
             if (result.success) {
+                console.log(`✅ Pedido creado exitosamente: ${result.id}`);
                 return {
                     success: true,
                     order_id: result.id,
@@ -251,9 +278,8 @@ class GraphQLApiService {
                 throw new Error(result.message);
             }
         } catch (error) {
-            console.error('[GraphQL] Error creando orden:', error);
-            const message = error instanceof Error ? error.message : 'Error desconocido del servidor';
-            return { success: false, order_id: '', message };
+            console.error('❌ Error creando pedido:', error);
+            throw new Error(`Error creando pedido: ${error instanceof Error ? error.message : 'Error desconocido'}`);
         }
     }
 
@@ -494,6 +520,33 @@ class GraphQLApiService {
             hash = hash & hash;
         }
         return Math.abs(hash);
+    }
+
+    private convertLegacyOrderDataToGraphQLWithOriginalIds(
+        data: LegacyCreateOrderData,
+        products: Product[],
+        restaurantId: string = 'ay-wey'
+    ): CreateOrderInput {
+        return {
+            customerName: data.nombre,
+            customerPhone: data.telefono,
+            customerEmail: data.correo,
+            restaurantId: restaurantId,
+            products: data.productos.map(item => {
+                // Buscar el producto por su ID numérico
+                const product = products.find(p => this.generateNumericId(p.id) === item.id);
+                return {
+                    id: product ? product.id : String(item.id), // Usar el ID de GraphQL (string)
+                    quantity: item.cantidad,
+                    price: item.precio
+                };
+            }),
+            total: data.total,
+            paymentMethod: data.metodo_pago,
+            deliveryMethod: data.modalidad_entrega,
+            mesa: data.mesa,
+            deliveryAddress: data.direccion
+        };
     }
 
     /**

@@ -1,11 +1,11 @@
 // Configuración de entorno para el frontend
 const config = {
   // URL del backend GraphQL
-  GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'https://choripam-backend-real.vercel.app/graphql',
+  GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:8000/graphql',
   
   // Configuración de desarrollo
   DEBUG_MODE: process.env.NEXT_PUBLIC_DEBUG_MODE === 'true',
-  ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'production',
+  ENVIRONMENT: process.env.NEXT_PUBLIC_ENVIRONMENT || 'development',
   
   // Configuración del restaurante
   DEFAULT_RESTAURANT_ID: 'ay-wey',

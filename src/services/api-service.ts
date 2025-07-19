@@ -92,25 +92,7 @@ class ApiService {
     async createOrder(orderData: { nombre: string; telefono: string; correo: string; productos: Array<{ id: number; cantidad: number; precio: number }>; total: number; metodo_pago: string; modalidad_entrega: string; mesa?: string; direccion?: string }, restaurantId: string = 'ay-wey') {
         console.log(`🔄 [GraphQL] Creando orden...`, { restaurantId, modalidad: orderData.modalidad_entrega });
         try {
-            // Convertir datos del formato español al formato inglés que espera CreateOrderInput
-            const createOrderInput = {
-                customerName: orderData.nombre,
-                customerPhone: orderData.telefono,
-                customerEmail: orderData.correo,
-                restaurantId: restaurantId,
-                products: orderData.productos.map(p => ({
-                    id: p.id.toString(), // Convertir a string
-                    quantity: p.cantidad,
-                    price: p.precio
-                })),
-                total: orderData.total,
-                paymentMethod: orderData.metodo_pago,
-                deliveryMethod: orderData.modalidad_entrega,
-                mesa: orderData.mesa,
-                deliveryAddress: orderData.direccion
-            };
-
-            const result = await this.graphqlService.createOrder(createOrderInput);
+            const result = await this.graphqlService.createOrder(orderData, restaurantId);
             console.log(`✅ [GraphQL] Orden creada exitosamente: ${result.order_id}`);
             return result;
         } catch (error) {
