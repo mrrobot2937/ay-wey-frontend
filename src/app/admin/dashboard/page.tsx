@@ -32,6 +32,7 @@ interface Analytics {
 export default function AdminDashboard() {
   const [ordersByType, setOrdersByType] = useState<OrdersByType>({ dine_in: [], delivery: [], pickup: [] });
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [period, setPeriod] = useState<'today' | 'month' | 'total'>('today');
   const { data, loading, error } = useQuery(GET_ORDERS_BY_RESTAURANT, {
       variables: { restaurantId: config.DEFAULT_RESTAURANT_ID },
       fetchPolicy: 'network-only',
@@ -45,23 +46,33 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (data?.ordersByRestaurant) {
       const allOrders: GQLOrder[] = data.ordersByRestaurant;
-
+      // Filtrar por periodo
+      const now = new Date();
+      let filteredOrders = allOrders.filter(order => ['delivered', 'ready'].includes(order.status));
+      if (period === 'today') {
+        filteredOrders = filteredOrders.filter(order => {
+          const created = new Date(order.createdAt);
+          return created.getDate() === now.getDate() && created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+        });
+      } else if (period === 'month') {
+        filteredOrders = filteredOrders.filter(order => {
+          const created = new Date(order.createdAt);
+          return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+        });
+      }
       // Calcular analytics
-      const totalRevenue = allOrders.reduce((sum: number, order: GQLOrder) => sum + order.total, 0);
-      const avgOrderValue = allOrders.length > 0 ? totalRevenue / allOrders.length : 0;
-      
-      const ordersByTypeCount = allOrders.reduce((acc: Record<DeliveryMethod, number>, order: GQLOrder) => {
+      const totalRevenue = filteredOrders.reduce((sum: number, order: GQLOrder) => sum + order.total, 0);
+      const avgOrderValue = filteredOrders.length > 0 ? totalRevenue / filteredOrders.length : 0;
+      const ordersByTypeCount = filteredOrders.reduce((acc: Record<DeliveryMethod, number>, order: GQLOrder) => {
         acc[order.deliveryMethod] = (acc[order.deliveryMethod] || 0) + 1;
         return acc;
       }, {} as Record<DeliveryMethod, number>);
-
-      const ordersByStatusCount = allOrders.reduce((acc: Record<string, number>, order: GQLOrder) => {
+      const ordersByStatusCount = filteredOrders.reduce((acc: Record<string, number>, order: GQLOrder) => {
         acc[order.status] = (acc[order.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
-
       setAnalytics({
-        total_orders: allOrders.length,
+        total_orders: filteredOrders.length,
         total_revenue: totalRevenue,
         avg_order_value: avgOrderValue,
         orders_by_type: {
@@ -70,17 +81,16 @@ export default function AdminDashboard() {
           PICKUP: ordersByTypeCount.PICKUP || 0
         },
         orders_by_status: ordersByStatusCount,
-        period_days: 7
+        period_days: period === 'today' ? 1 : period === 'month' ? 30 : 365
       });
-
-      // Filtrar órdenes
+      // Filtrar órdenes por tipo (todas para las listas, no solo entregadas)
       setOrdersByType({
         dine_in: allOrders.filter(o => o.deliveryMethod === 'DINE_IN'),
         delivery: allOrders.filter(o => o.deliveryMethod === 'DELIVERY'),
         pickup: allOrders.filter(o => o.deliveryMethod === 'PICKUP'),
       });
     }
-  }, [data]);
+  }, [data, period]);
 
   if (loading) return <LoadingSpinner />;
   if (error) return <p>Error: {error.message}</p>;
@@ -234,60 +244,63 @@ export default function AdminDashboard() {
 
       {/* Cards de resumen */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Filtros de periodo para ingresos */}
+        <div className="col-span-1 md:col-span-2 lg:col-span-4 flex justify-center mb-2 gap-2">
+          <button onClick={() => setPeriod('today')} className={`px-3 py-1 rounded-full text-sm font-bold border ${period==='today' ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-white text-gray-700 border-gray-300'}`}>Hoy</button>
+          <button onClick={() => setPeriod('month')} className={`px-3 py-1 rounded-full text-sm font-bold border ${period==='month' ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-white text-gray-700 border-gray-300'}`}>Este mes</button>
+          <button onClick={() => setPeriod('total')} className={`px-3 py-1 rounded-full text-sm font-bold border ${period==='total' ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-white text-gray-700 border-gray-300'}`}>Total</button>
+        </div>
         {/* Órdenes activas */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center">
-            <div className="p-2 bg-yellow-600 rounded-lg">
+            <div className="p-2 bg-yellow-400 rounded-lg">
               <span className="text-2xl">📋</span>
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-white">{totalActiveOrders}</p>
-              <p className="text-gray-400">Órdenes Activas</p>
+              <p className="text-2xl font-bold text-gray-900">{totalActiveOrders}</p>
+              <p className="text-gray-500">Órdenes Activas</p>
             </div>
           </div>
         </div>
-
         {/* Revenue total */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center">
-            <div className="p-2 bg-green-600 rounded-lg">
+            <div className="p-2 bg-green-400 rounded-lg">
               <span className="text-2xl">💰</span>
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-gray-900">
                 {analytics ? formatCurrency(analytics.total_revenue) : formatCurrency(0)}
               </p>
-              <p className="text-gray-400">Ingresos Totales</p>
+              <p className="text-gray-500">Ingresos {period === 'today' ? 'de Hoy' : period === 'month' ? 'del Mes' : 'Totales'}</p>
             </div>
           </div>
         </div>
-
         {/* Promedio por orden */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-600 rounded-lg">
+            <div className="p-2 bg-blue-400 rounded-lg">
               <span className="text-2xl">📊</span>
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-gray-900">
                 {analytics ? formatCurrency(analytics.avg_order_value) : formatCurrency(0)}
               </p>
-              <p className="text-gray-400">Promedio/Orden</p>
+              <p className="text-gray-500">Promedio/Orden</p>
             </div>
           </div>
         </div>
-
         {/* Total órdenes */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center">
-            <div className="p-2 bg-purple-600 rounded-lg">
+            <div className="p-2 bg-purple-400 rounded-lg">
               <span className="text-2xl">🎯</span>
             </div>
             <div className="ml-4">
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-gray-900">
                 {analytics ? analytics.total_orders : 0}
               </p>
-              <p className="text-gray-400">Total Órdenes</p>
+              <p className="text-gray-500">Total Órdenes</p>
             </div>
           </div>
         </div>

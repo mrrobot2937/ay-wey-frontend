@@ -194,17 +194,16 @@ export default function AdminOrders() {
       {/* Header con filtros */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Todas las Órdenes</h1>
-          <p className="text-gray-400 capitalize">
+          <h1 className="text-2xl font-bold text-gray-900">Todas las Órdenes</h1>
+          <p className="text-gray-500 capitalize">
             {restaurantId} • {orders.length} orden{orders.length !== 1 ? 'es' : ''}
           </p>
         </div>
-        
         <div className="flex gap-4 items-center">
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as OrderStatus)}
-            className="px-4 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:ring-2 focus:ring-yellow-400"
+            className="px-4 py-2 bg-white text-gray-900 rounded-lg border border-gray-300 focus:ring-2 focus:ring-yellow-400"
           >
             {statusOptions.map(option => (
               <option key={option.value} value={option.value}>
@@ -212,23 +211,21 @@ export default function AdminOrders() {
               </option>
             ))}
           </select>
-          
           <button
             onClick={loadData}
-            className="px-4 py-2 bg-yellow-600 text-black rounded-lg hover:bg-yellow-700 transition-colors"
+            className="px-4 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500 transition-colors font-semibold"
             disabled={loading}
           >
             🔄 Actualizar
           </button>
         </div>
       </div>
-
       {/* Lista de órdenes */}
       {orders.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-6xl mb-4">📋</div>
-          <h3 className="text-2xl font-bold mb-2">No hay órdenes</h3>
-          <p className="text-gray-400">
+          <h3 className="text-2xl font-bold mb-2 text-gray-900">No hay órdenes</h3>
+          <p className="text-gray-500">
             {statusFilter 
               ? `No se encontraron órdenes con estado "${getStatusLabel(statusFilter)}"`
               : 'No hay órdenes disponibles en este momento'
@@ -236,75 +233,72 @@ export default function AdminOrders() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid gap-6 grid-cols-1">
           {orders.map((order) => (
-            <div key={order.id} className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+            <div key={order.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Información principal */}
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-xl font-bold text-white">#{order.id.substring(0, 8)}</h3>
-                      <p className="text-gray-400 text-sm">{formatTimeElapsed(order.createdAt)} atrás</p>
+                      <h3 className="text-xl font-bold text-gray-900">#{order.id.substring(0, 8)}</h3>
+                      <p className="text-gray-500 text-sm">{formatTimeElapsed(order.createdAt)} atrás</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`px-3 py-1 rounded-full text-sm text-white ${getStatusColor(order.status)}`}>
                         {getStatusLabel(order.status)}
                       </span>
-                      <span className="px-3 py-1 rounded-full text-sm bg-gray-700 text-white flex items-center gap-1">
+                      <span className="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 flex items-center gap-1">
                         {getDeliveryIcon(order.deliveryMethod)}
                         {getDeliveryLabel(order.deliveryMethod)}
                       </span>
                     </div>
                   </div>
-
                   {/* Información del cliente */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <p className="text-sm text-gray-400">Cliente</p>
-                      <p className="font-semibold text-white">{order.customer.name}</p>
-                      <p className="text-sm text-gray-300">{order.customer.phone}</p>
+                      <p className="text-sm text-gray-500">Cliente</p>
+                      <p className="font-semibold text-gray-900">{order.customer.name}</p>
+                      <p className="text-sm text-gray-700">{order.customer.phone}</p>
                       {order.customer.email && (
-                        <p className="text-sm text-gray-300">{order.customer.email}</p>
+                        <p className="text-sm text-gray-700">{order.customer.email}</p>
                       )}
                     </div>
                     <div>
-                      <p className="text-sm text-gray-400">Entrega</p>
+                      <p className="text-sm text-gray-500">Entrega</p>
                       {order.deliveryMethod === 'DINE_IN' && order.mesa && (
-                        <p className="font-semibold text-white">Mesa: {order.mesa}</p>
+                        <p className="font-semibold text-gray-900">Mesa: {order.mesa}</p>
                       )}
                       {order.deliveryMethod === 'DELIVERY' && order.deliveryAddress && (
-                        <p className="font-semibold text-white">{order.deliveryAddress}</p>
+                        <p className="font-semibold text-gray-900">{order.deliveryAddress}</p>
                       )}
                       {order.deliveryMethod === 'PICKUP' && (
-                        <p className="font-semibold text-white">Para recoger en local</p>
+                        <p className="font-semibold text-gray-900">Para recoger en local</p>
                       )}
                     </div>
                   </div>
-
                   {/* Productos y Total */}
                   <div className="space-y-2">
                     {order.products.map(product => (
                       <div key={product.id} className="flex justify-between items-center text-sm">
                         <span>
                           {product.name}
-                          <span className="font-semibold text-yellow-400"> x{product.quantity}</span>
+                          <span className="font-semibold text-yellow-500"> x{product.quantity}</span>
                         </span>
                         <span className="font-mono">{formatCurrency(product.price * product.quantity)}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-4 pt-4 border-t border-gray-600 flex justify-between items-center">
-                    <span className="text-lg font-bold">Total</span>
-                    <span className="text-xl font-bold text-yellow-400">{formatCurrency(order.total)}</span>
+                  <div className="mt-4 pt-4 border-t border-gray-200 flex justify-between items-center">
+                    <span className="text-lg font-bold text-gray-900">Total</span>
+                    <span className="text-xl font-bold text-yellow-500">{formatCurrency(order.total)}</span>
                   </div>
-
                   {/* FORMULARIO PARA AÑADIR PRODUCTO */}
-                  <div className="mt-6 pt-4 border-t border-dashed border-gray-600">
-                    <h4 className="text-sm font-semibold text-gray-300 mb-2">Añadir Producto a la Orden</h4>
-                    <div className="flex gap-2">
+                  <div className="mt-6 pt-4 border-t border-dashed border-gray-200">
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Añadir Producto a la Orden</h4>
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <select 
-                        className="flex-grow bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm"
+                        className="flex-grow bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
                         value={selectedProduct}
                         onChange={(e) => setSelectedProduct(e.target.value)}
                         disabled={addingProductTo === order.id}
@@ -317,14 +311,14 @@ export default function AdminOrders() {
                       <input 
                         type="number"
                         min="1"
-                        className="w-20 bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm"
+                        className="w-20 bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
                         value={quantity}
                         onChange={(e) => setQuantity(Number(e.target.value))}
                         disabled={addingProductTo === order.id}
                       />
                       <button
                         onClick={() => handleAddProduct(order.id)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-semibold hover:bg-green-700 disabled:bg-gray-500"
+                        className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-semibold hover:bg-green-600 disabled:bg-gray-300 disabled:text-gray-500"
                         disabled={addingProductTo === order.id || !selectedProduct}
                       >
                         {addingProductTo === order.id ? 'Añadiendo...' : 'Añadir'}
@@ -332,17 +326,16 @@ export default function AdminOrders() {
                     </div>
                   </div>
                 </div>
-
                 {/* Acciones de estado */}
-                <div className="lg:w-64 flex-shrink-0 space-y-2">
-                  <p className="text-sm text-gray-400 mb-2">Cambiar estado</p>
+                <div className="lg:w-64 flex-shrink-0 space-y-2 mt-6 lg:mt-0">
+                  <p className="text-sm text-gray-500 mb-2">Cambiar estado</p>
                   <div className="space-y-2">
                     {nextStatusOptions(order.status).map((status) => (
                       <button
                         key={status}
                         onClick={() => updateOrderStatus(order.id, status)}
                         disabled={updating === order.id}
-                        className={`w-full px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${getStatusColor(status)} text-white hover:opacity-80 disabled:opacity-50`}
+                        className={`w-full px-4 py-3 rounded-lg text-base font-semibold transition-colors ${getStatusColor(status)} text-white hover:opacity-90 disabled:opacity-50`}
                       >
                         {updating === order.id ? (
                           <div className="flex items-center justify-center gap-2">
@@ -355,7 +348,7 @@ export default function AdminOrders() {
                       </button>
                     ))}
                     {nextStatusOptions(order.status).length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
+                      <p className="text-sm text-gray-400 text-center py-4">
                         No hay acciones disponibles
                       </p>
                     )}
@@ -366,9 +359,8 @@ export default function AdminOrders() {
           ))}
         </div>
       )}
-
       {error && (
-        <div className="bg-red-600 text-white p-4 rounded-lg flex items-center gap-2">
+        <div className="bg-red-500 text-white p-4 rounded-lg flex items-center gap-2">
           <span>❌</span>
           {error}
         </div>

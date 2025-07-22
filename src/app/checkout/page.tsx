@@ -127,25 +127,25 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center py-10 px-4">
-      <div className="w-full max-w-2xl bg-zinc-900 rounded-3xl shadow-2xl p-8">
+    <div className="min-h-screen bg-white text-gray-900 flex flex-col items-center py-10 px-4">
+      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-8 border border-gray-200">
         <div className="flex items-center gap-4 mb-8">
           <div className="text-3xl">🍽️</div>
           <div>
-            <h1 className="text-3xl font-extrabold">Finalizar pedido</h1>
-            <p className="text-gray-400 capitalize">Ay Wey - Pedido por Mesero</p>
+            <h1 className="text-3xl font-extrabold text-yellow-500">Finalizar pedido</h1>
+            <p className="text-gray-500 capitalize">Ay Wey - Pedido por Mesero</p>
           </div>
         </div>
         
         {orderSent ? (
           <div className="text-center space-y-6">
             <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-2xl font-bold text-green-400">¡Pedido realizado!</h2>
-            <div className="bg-zinc-800 rounded-lg p-4 mb-4">
-              <p className="text-sm text-gray-400">Número de pedido</p>
-              <p className="text-2xl font-bold text-yellow-400">#{orderId}</p>
+            <h2 className="text-2xl font-bold text-green-500">¡Pedido realizado!</h2>
+            <div className="bg-gray-100 rounded-lg p-4 mb-4 border border-gray-200">
+              <p className="text-sm text-gray-500">Número de pedido</p>
+              <p className="text-2xl font-bold text-yellow-500">#{orderId}</p>
             </div>
-            <p className="text-lg">
+            <p className="text-lg text-gray-900">
               El pedido ha sido registrado exitosamente. 
               Se envió una notificación al WhatsApp del restaurante.
             </p>
@@ -158,9 +158,9 @@ export default function CheckoutPage() {
               Ver Pedido en WhatsApp
             </a>
             {payment === "transferencia" && (
-              <div className="mt-6 p-4 bg-yellow-400/10 border border-yellow-400 rounded-lg">
-                <p className="text-yellow-400 font-bold mb-2">📱 Instrucciones de pago</p>
-                <p className="text-sm">
+              <div className="mt-6 p-4 bg-yellow-100 border border-yellow-400 rounded-lg">
+                <p className="text-yellow-500 font-bold mb-2">📱 Instrucciones de pago</p>
+                <p className="text-sm text-gray-900">
                   El cliente debe enviar el comprobante de la transferencia al WhatsApp. 
                   El sistema lo analizará automáticamente para confirmar el pago.
                 </p>
@@ -175,21 +175,20 @@ export default function CheckoutPage() {
               await handleOrder();
             }}
           >
-            {/* Campos de cliente removidos - pedidos por mesero */}
-            <div className="bg-zinc-800 rounded-xl p-4 mb-6">
-              <h3 className="text-lg font-bold text-yellow-400 mb-2">🍽️ Pedido por Mesero</h3>
-              <p className="text-gray-300 text-sm">
+            <div className="bg-gray-100 rounded-xl p-4 mb-6 border border-gray-200">
+              <h3 className="text-lg font-bold text-yellow-500 mb-2">🍽️ Pedido por Mesero</h3>
+              <p className="text-gray-700 text-sm">
                 Este pedido será realizado por el mesero. No se requiere información del cliente.
               </p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block mb-2 font-bold">Método de pago</label>
+                <label className="block mb-2 font-bold text-gray-900">Método de pago</label>
                 <select
                   value={payment}
                   onChange={e => setPayment(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 >
                   {paymentOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -197,11 +196,11 @@ export default function CheckoutPage() {
                 </select>
               </div>
               <div>
-                <label className="block mb-2 font-bold">Modalidad de entrega</label>
+                <label className="block mb-2 font-bold text-gray-900">Modalidad de entrega</label>
                 <select
                   value={delivery}
                   onChange={e => setDelivery(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 >
                   {deliveryOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -212,13 +211,13 @@ export default function CheckoutPage() {
             
             {delivery === "domicilio" && (
               <div>
-                <label className="block mb-2 font-bold">Dirección</label>
+                <label className="block mb-2 font-bold text-gray-900">Dirección</label>
                 <input
                   type="text"
                   required
                   value={address}
                   onChange={e => setAddress(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   placeholder="Dirección completa para la entrega"
                 />
               </div>
@@ -226,29 +225,29 @@ export default function CheckoutPage() {
             
             {delivery === "mesa" && (
               <div>
-                <label className="block mb-2 font-bold">Número de mesa</label>
+                <label className="block mb-2 font-bold text-gray-900">Número de mesa</label>
                 <input
                   type="text"
                   required
                   value={mesa}
                   onChange={e => setMesa(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className="w-full px-4 py-2 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   placeholder="Ej: Mesa 5"
                 />
               </div>
             )}
             
             {payment === "transferencia" && (
-              <div className="bg-zinc-800 rounded-xl p-4 mt-4 flex flex-col items-center">
-                <p className="text-lg font-bold text-yellow-400 mb-2">💳 Transfiere a Nequi</p>
+              <div className="bg-yellow-100 rounded-xl p-4 mt-4 flex flex-col items-center border border-yellow-400">
+                <p className="text-lg font-bold text-yellow-500 mb-2">💳 Transfiere a Nequi</p>
                 <Image src={QR_IMAGE} alt="QR Nequi" width={120} height={120} className="mb-2 rounded-lg" />
-                <p className="text-white text-lg">
-                  Número: <span className="font-mono text-yellow-400">{NEQUI_NUMBER}</span>
+                <p className="text-gray-900 text-lg">
+                  Número: <span className="font-mono text-yellow-500">{NEQUI_NUMBER}</span>
                 </p>
-                                 <p className="text-sm text-gray-400 mt-2 text-center">
-                   El cliente debe transferir y enviar el comprobante al WhatsApp 
-                   que se abrirá automáticamente al confirmar el pedido.
-                 </p>
+                <p className="text-sm text-gray-700 mt-2 text-center">
+                  El cliente debe transferir y enviar el comprobante al WhatsApp 
+                  que se abrirá automáticamente al confirmar el pedido.
+                </p>
               </div>
             )}
             
@@ -258,7 +257,7 @@ export default function CheckoutPage() {
                 placeholder="Cupón de descuento"
                 value={coupon}
                 onChange={e => setCoupon(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-full bg-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                className="flex-1 px-4 py-2 rounded-full bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
                 disabled={couponApplied}
               />
               <button
@@ -271,10 +270,10 @@ export default function CheckoutPage() {
               </button>
             </div>
             
-            <div className="bg-zinc-800 rounded-xl p-4 mt-4">
-              <h2 className="text-xl font-bold mb-4">Resumen del pedido</h2>
+            <div className="bg-gray-100 rounded-xl p-4 mt-4 border border-gray-200">
+              <h2 className="text-xl font-bold mb-4 text-gray-900">Resumen del pedido</h2>
               {cart.length === 0 ? (
-                <p className="text-zinc-400">No hay productos en el carrito.</p>
+                <p className="text-gray-500">No hay productos en el carrito.</p>
               ) : (
                 <div className="space-y-2 mb-4">
                   {cart.map((item) => {
@@ -282,33 +281,33 @@ export default function CheckoutPage() {
                     return (
                       <div key={itemKey} className="flex justify-between items-center">
                         <div className="flex-1">
-                          <span className="font-medium">{getProductDisplayName(item)}</span>
-                          <span className="text-gray-400 ml-2">x{item.quantity}</span>
+                          <span className="font-medium text-gray-900">{getProductDisplayName(item)}</span>
+                          <span className="text-gray-500 ml-2">x{item.quantity}</span>
                           {item.selectedVariant && (
-                            <div className="text-xs text-yellow-400">
+                            <div className="text-xs text-yellow-500">
                               {item.selectedVariant.size} • ${item.selectedVariant.price.toLocaleString()}
                             </div>
                           )}
                         </div>
-                        <span className="font-bold">${(item.price * item.quantity).toLocaleString()}</span>
+                        <span className="font-bold text-gray-900">${(item.price * item.quantity).toLocaleString()}</span>
                       </div>
                     );
                   })}
                 </div>
               )}
               
-              <div className="border-t border-zinc-700 pt-4 space-y-2">
+              <div className="border-t border-gray-300 pt-4 space-y-2">
                 <div className="flex justify-between text-lg">
                   <span>Subtotal</span>
                   <span>${subtotal.toLocaleString()}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between text-lg text-green-400">
+                  <div className="flex justify-between text-lg text-green-500">
                     <span>Descuento (10%)</span>
                     <span>- ${discount.toLocaleString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-2xl font-extrabold text-yellow-400">
+                <div className="flex justify-between text-2xl font-extrabold text-yellow-500">
                   <span>Total</span>
                   <span>${total.toLocaleString()}</span>
                 </div>
