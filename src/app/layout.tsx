@@ -37,7 +37,14 @@ export default function RootLayout({
                 <Link href="/" className="flex items-center gap-2">
                   <div className="text-2xl font-bold text-yellow-400">🍽️ Ay Wey</div>
                 </Link>
-                <CartButtonAndPanel />
+                <div className="flex items-center gap-4">
+                  <Link href="/admin/orders">
+                    <button className="px-4 py-2 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-300 transition-colors text-sm shadow">
+                      Admin Órdenes
+                    </button>
+                  </Link>
+                  <CartButtonAndPanel />
+                </div>
               </header>
               <div className="pt-24">{children}</div>
             </CartProvider>

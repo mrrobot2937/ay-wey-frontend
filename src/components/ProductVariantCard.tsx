@@ -38,7 +38,7 @@ export default function ProductVariantCard({ product }: { product: ProductWithIm
   }
 
   return (
-    <div className="bg-white rounded-3xl p-4 shadow-2xl flex flex-col gap-3 border border-gray-200 hover:border-yellow-400 transition-colors relative overflow-hidden group h-full">
+    <div className="bg-gray-100 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 border border-gray-200 hover:border-yellow-400 transition-colors relative overflow-hidden group h-full">
       {/* Imagen del producto - Mejorada para imágenes cuadradas */}
       <div className="relative aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden mb-3">
         {mainImageUrl && !imageError ? (

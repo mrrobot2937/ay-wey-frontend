@@ -45,33 +45,33 @@ export default function ProductList({ products }: { products: Product[] }) {
               <h3 className="text-xl font-bold mb-2 line-clamp-2 leading-tight text-gray-900">{product.name}</h3>
               <p className="text-gray-500 mb-3 text-sm line-clamp-3 leading-relaxed">{product.description}</p>
               <span className="text-yellow-500 font-extrabold text-lg mb-3">${product.price.toLocaleString()}</span>
-              {/* Controles de cantidad */}
+            {/* Controles de cantidad */}
               <div className="flex items-center gap-3 mb-3">
-                <button
-                  className="w-8 h-8 rounded-full bg-gray-100 text-yellow-500 border-2 border-yellow-400 font-bold text-xl flex items-center justify-center hover:bg-yellow-400 hover:text-black transition-colors"
-                  onClick={() => removeFromCart(String(product.id))}
-                  disabled={quantity === 0}
-                  aria-label="Restar"
-                >
-                  -
-                </button>
-                <span className="text-lg font-bold w-6 text-center text-gray-900">{quantity}</span>
-                <button
-                  className="w-8 h-8 rounded-full bg-yellow-400 text-black font-bold text-xl flex items-center justify-center hover:bg-yellow-300 transition-colors"
-                  onClick={() => addToCart(product)}
-                  aria-label="Sumar"
-                >
-                  +
-                </button>
-              </div>
-              {/* Espacio para cupones aplicados (placeholder) */}
-              <div className="mb-3 min-h-[24px] text-green-500 font-bold text-sm"></div>
               <button
-                className="mt-auto px-4 py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-300 active:scale-95 transition-colors text-base shadow-lg"
-                onClick={() => addToCart(product)}
+                  className="w-8 h-8 rounded-full bg-gray-100 text-yellow-500 border-2 border-yellow-400 font-bold text-xl flex items-center justify-center hover:bg-yellow-400 hover:text-black transition-colors"
+                onClick={() => removeFromCart(String(product.id))}
+                disabled={quantity === 0}
+                aria-label="Restar"
               >
-                Agregar al carrito
+                -
               </button>
+                <span className="text-lg font-bold w-6 text-center text-gray-900">{quantity}</span>
+              <button
+                className="w-8 h-8 rounded-full bg-yellow-400 text-black font-bold text-xl flex items-center justify-center hover:bg-yellow-300 transition-colors"
+                onClick={() => addToCart(product)}
+                aria-label="Sumar"
+              >
+                +
+              </button>
+            </div>
+            {/* Espacio para cupones aplicados (placeholder) */}
+              <div className="mb-3 min-h-[24px] text-green-500 font-bold text-sm"></div>
+            <button
+                className="mt-auto px-4 py-3 rounded-full bg-yellow-400 text-black font-bold hover:bg-yellow-300 active:scale-95 transition-colors text-base shadow-lg"
+              onClick={() => addToCart(product)}
+            >
+              Agregar al carrito
+            </button>
             </div>
           </div>
         );

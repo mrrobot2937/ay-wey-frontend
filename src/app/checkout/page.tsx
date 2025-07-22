@@ -245,9 +245,9 @@ export default function CheckoutPage() {
                   Número: <span className="font-mono text-yellow-500">{NEQUI_NUMBER}</span>
                 </p>
                 <p className="text-sm text-gray-700 mt-2 text-center">
-                  El cliente debe transferir y enviar el comprobante al WhatsApp 
-                  que se abrirá automáticamente al confirmar el pedido.
-                </p>
+                   El cliente debe transferir y enviar el comprobante al WhatsApp 
+                   que se abrirá automáticamente al confirmar el pedido.
+                 </p>
               </div>
             )}
             

@@ -235,7 +235,7 @@ export default function AdminOrders() {
       ) : (
         <div className="grid gap-6 grid-cols-1">
           {orders.map((order) => (
-            <div key={order.id} className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+            <div key={order.id} className="bg-gray-100 rounded-lg border border-gray-200 p-6 shadow-sm">
               <div className="flex flex-col lg:flex-row gap-6">
                 {/* Información principal */}
                 <div className="flex-1">
