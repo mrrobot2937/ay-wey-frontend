@@ -263,6 +263,9 @@ export default function AdminOrders() {
                       {order.customer.email && (
                         <p className="text-sm text-gray-700">{order.customer.email}</p>
                       )}
+                      {order.mesa && (
+                        <p className="text-sm text-blue-700 font-bold mt-1">Mesa: {order.mesa}</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Entrega</p>
