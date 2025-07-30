@@ -149,6 +149,30 @@ class ApiService {
         }
     }
 
+    async removeProductFromOrder(orderId: string, productId: string, restaurantId: string = 'ay-wey') {
+        console.log(`🔄 [GraphQL] Eliminando producto de la orden...`, { orderId, productId, restaurantId });
+        try {
+            const result = await this.graphqlService.removeProductFromOrder(orderId, productId, restaurantId);
+            console.log(`✅ [GraphQL] Producto eliminado de la orden exitosamente`);
+            return result;
+        } catch (error) {
+            console.error(`❌ [GraphQL] Error eliminando producto de la orden:`, error);
+            throw error;
+        }
+    }
+
+    async updateProductQuantityInOrder(orderId: string, productId: string, quantity: number, restaurantId: string = 'ay-wey') {
+        console.log(`🔄 [GraphQL] Actualizando cantidad del producto en la orden...`, { orderId, productId, quantity, restaurantId });
+        try {
+            const result = await this.graphqlService.updateProductQuantityInOrder(orderId, productId, quantity, restaurantId);
+            console.log(`✅ [GraphQL] Cantidad del producto actualizada exitosamente`);
+            return result;
+        } catch (error) {
+            console.error(`❌ [GraphQL] Error actualizando cantidad del producto:`, error);
+            throw error;
+        }
+    }
+
     /**
      * Métodos de categorías y estadísticas
      */

@@ -43,7 +43,7 @@ export default function RootLayout({
                       Admin Órdenes
                     </button>
                   </Link>
-                  <CartButtonAndPanel />
+                <CartButtonAndPanel />
                 </div>
               </header>
               <div className="pt-24">{children}</div>

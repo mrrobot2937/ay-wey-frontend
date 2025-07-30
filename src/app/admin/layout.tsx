@@ -110,66 +110,66 @@ export default function AdminLayout({
           <div className="fixed inset-0 z-40 bg-black bg-opacity-30 md:hidden" onClick={() => setSidebarOpen(false)}></div>
         )}
         <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg border-r border-gray-200 transform transition-transform duration-200 md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 md:block`}>
-          {/* Logo y info del restaurante */}
-          <div className="flex flex-col h-full">
+        {/* Logo y info del restaurante */}
+        <div className="flex flex-col h-full">
             <div className="flex items-center justify-center h-16 bg-white border-b border-gray-200">
               <h1 className="text-xl font-bold text-yellow-500">Admin Panel</h1>
-            </div>
-            {/* Info del usuario */}
+          </div>
+          {/* Info del usuario */}
             <div className="p-4 border-b border-gray-200">
               <p className="text-sm text-gray-500">Restaurante</p>
               <p className="font-semibold text-yellow-500">{adminUser.restaurant_name}</p>
-              <p className="text-xs text-gray-400 mt-1">{adminUser.name}</p>
-            </div>
-            {/* Navegación */}
-            <nav className="flex-1 p-4 space-y-2">
-              <Link
-                href="/admin/dashboard"
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                  pathname === '/admin/dashboard' 
+            <p className="text-xs text-gray-400 mt-1">{adminUser.name}</p>
+          </div>
+          {/* Navegación */}
+          <nav className="flex-1 p-4 space-y-2">
+            <Link
+              href="/admin/dashboard"
+              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                pathname === '/admin/dashboard' 
                     ? 'bg-yellow-100 text-yellow-700' 
                     : 'text-gray-700 hover:bg-yellow-50'
-                }`}
-              >
-                <span className="mr-3">📊</span>
-                Dashboard
-              </Link>
-              <Link
-                href="/admin/orders"
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                  pathname.startsWith('/admin/orders') 
+              }`}
+            >
+              <span className="mr-3">📊</span>
+              Dashboard
+            </Link>
+            <Link
+              href="/admin/orders"
+              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                pathname.startsWith('/admin/orders') 
                     ? 'bg-yellow-100 text-yellow-700' 
                     : 'text-gray-700 hover:bg-yellow-50'
-                }`}
-              >
-                <span className="mr-3">📋</span>
-                Órdenes
-              </Link>
-              <Link
-                href="/admin/products"
-                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
-                  pathname === '/admin/products' 
+              }`}
+            >
+              <span className="mr-3">📋</span>
+              Órdenes
+            </Link>
+            <Link
+              href="/admin/products"
+              className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                pathname === '/admin/products' 
                     ? 'bg-yellow-100 text-yellow-700' 
                     : 'text-gray-700 hover:bg-yellow-50'
-                }`}
-              >
-                <span className="mr-3">🍽️</span>
-                Productos
-              </Link>
-            </nav>
-            {/* Botón de logout */}
+              }`}
+            >
+              <span className="mr-3">🍽️</span>
+              Productos
+            </Link>
+          </nav>
+          {/* Botón de logout */}
             <div className="p-4 border-t border-gray-200">
-              <button
-                onClick={handleLogout}
+            <button
+              onClick={handleLogout}
                 className="w-full flex items-center px-4 py-2 text-gray-700 hover:bg-yellow-50 rounded-lg transition-colors"
-              >
+            >
                 <span className="mr-3">🔒</span>
-                Cerrar Sesión
-              </button>
-            </div>
+              Cerrar Sesión
+            </button>
           </div>
         </div>
-        {/* Contenido principal */}
+      </div>
+      {/* Contenido principal */}
         <div className="flex-1 flex justify-center bg-gray-50 min-h-screen">
           <div className="w-full max-w-6xl p-6 md:p-10 mt-6 md:mt-10 bg-white rounded-2xl shadow-xl border border-gray-100">
             {children}

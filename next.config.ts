@@ -28,6 +28,31 @@ const nextConfig: NextConfig = {
         port: '8000',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.noticiasneo.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Dominios comunes para imágenes de productos
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.cloudfront.net',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 

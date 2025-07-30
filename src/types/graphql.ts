@@ -135,10 +135,13 @@ export interface CreateOrderInput {
 
 export type OrderStatus =
     | 'PENDING'
+    | 'pending'
     | 'CONFIRMED'
     | 'PREPARING'
     | 'READY'
     | 'DELIVERED'
+    | 'PAID'
+    | 'paid'
     | 'CANCELLED';
 
 export type PaymentMethod = 'CASH' | 'TRANSFER';

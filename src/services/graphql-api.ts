@@ -11,7 +11,9 @@ import {
     CREATE_ORDER,
     UPDATE_ORDER_STATUS,
     CREATE_CATEGORY,
-    ADD_PRODUCT_TO_ORDER
+    ADD_PRODUCT_TO_ORDER,
+    REMOVE_PRODUCT_FROM_ORDER,
+    UPDATE_PRODUCT_QUANTITY_IN_ORDER
 } from '../graphql/queries';
 import {
     Product,
@@ -547,6 +549,57 @@ class GraphQLApiService {
             mesa: data.mesa,
             deliveryAddress: data.direccion
         };
+    }
+
+    /**
+     * Eliminar producto de una orden
+     */
+    async removeProductFromOrder(orderId: string, productId: string, restaurantId: string = 'ay-wey') {
+        try {
+            const result = await apolloClient.mutate({
+                mutation: REMOVE_PRODUCT_FROM_ORDER,
+                variables: {
+                    orderId,
+                    productId,
+                    restaurantId
+                }
+            });
+
+            if (result.errors) {
+                throw new Error(result.errors[0].message);
+            }
+
+            return result.data.removeProductFromOrder;
+        } catch (error) {
+            console.error('Error eliminando producto de la orden:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Actualizar cantidad de producto en una orden
+     */
+    async updateProductQuantityInOrder(orderId: string, productId: string, quantity: number, restaurantId: string = 'ay-wey') {
+        try {
+            const result = await apolloClient.mutate({
+                mutation: UPDATE_PRODUCT_QUANTITY_IN_ORDER,
+                variables: {
+                    orderId,
+                    productId,
+                    quantity,
+                    restaurantId
+                }
+            });
+
+            if (result.errors) {
+                throw new Error(result.errors[0].message);
+            }
+
+            return result.data.updateProductQuantityInOrder;
+        } catch (error) {
+            console.error('Error actualizando cantidad del producto:', error);
+            throw error;
+        }
     }
 
     /**

@@ -170,6 +170,13 @@ export const GET_RESTAURANT_STATS = gql`
   }
 `;
 
+// Debug info
+export const GET_DEBUG_INFO = gql`
+  query GetDebugInfo {
+    debugInfo
+  }
+`;
+
 // ===================================================================
 // MUTATIONS
 // ===================================================================
@@ -241,6 +248,44 @@ export const UPDATE_ORDER_STATUS = gql`
 export const ADD_PRODUCT_TO_ORDER = gql`
     mutation AddProductToOrder($orderId: String!, $productId: String!, $quantity: Int!, $restaurantId: String!) {
         addProductToOrder(orderId: $orderId, productId: $productId, quantity: $quantity, restaurantId: $restaurantId) {
+            success
+            message
+            order {
+                id
+                total
+                products {
+                    id
+                    name
+                    quantity
+                    price
+                }
+            }
+        }
+    }
+`;
+
+export const REMOVE_PRODUCT_FROM_ORDER = gql`
+    mutation RemoveProductFromOrder($orderId: String!, $productId: String!, $restaurantId: String!) {
+        removeProductFromOrder(orderId: $orderId, productId: $productId, restaurantId: $restaurantId) {
+            success
+            message
+            order {
+                id
+                total
+                products {
+                    id
+                    name
+                    quantity
+                    price
+                }
+            }
+        }
+    }
+`;
+
+export const UPDATE_PRODUCT_QUANTITY_IN_ORDER = gql`
+    mutation UpdateProductQuantityInOrder($orderId: String!, $productId: String!, $quantity: Int!, $restaurantId: String!) {
+        updateProductQuantityInOrder(orderId: $orderId, productId: $productId, quantity: $quantity, restaurantId: $restaurantId) {
             success
             message
             order {

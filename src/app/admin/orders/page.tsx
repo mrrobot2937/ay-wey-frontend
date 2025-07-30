@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
 import { apiService, Order, Product, OrderStatus } from '../../../services/api-service';
+import { useMutation } from '@apollo/client';
+import { REMOVE_PRODUCT_FROM_ORDER, UPDATE_PRODUCT_QUANTITY_IN_ORDER } from '../../../graphql/queries';
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -15,6 +17,13 @@ export default function AdminOrders() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [addingProductTo, setAddingProductTo] = useState<string | null>(null);
+  
+  // Estados para modificar productos
+  const [modifyingProduct, setModifyingProduct] = useState<string | null>(null);
+
+  // Mutaciones GraphQL
+  const [removeProductFromOrder] = useMutation(REMOVE_PRODUCT_FROM_ORDER);
+  const [updateProductQuantityInOrder] = useMutation(UPDATE_PRODUCT_QUANTITY_IN_ORDER);
 
 
   const loadData = useCallback(async () => {
@@ -93,14 +102,65 @@ export default function AdminOrders() {
     }
   };
 
+  const handleRemoveProduct = async (orderId: string, productId: string) => {
+    try {
+      setModifyingProduct(productId);
+      
+      await removeProductFromOrder({
+        variables: {
+          orderId,
+          productId,
+          restaurantId
+        }
+      });
+
+      // Recargar los datos para ver los cambios
+      await loadData();
+
+    } catch (error) {
+      console.error("Error eliminando producto de la orden:", error);
+      alert("Hubo un error al eliminar el producto. Inténtalo de nuevo.");
+    } finally {
+      setModifyingProduct(null);
+    }
+  };
+
+  const handleUpdateQuantity = async (orderId: string, productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      // Si la cantidad es 0 o menor, eliminar el producto
+      await handleRemoveProduct(orderId, productId);
+      return;
+    }
+
+    try {
+      setModifyingProduct(productId);
+      
+      await updateProductQuantityInOrder({
+        variables: {
+          orderId,
+          productId,
+          quantity: newQuantity,
+          restaurantId
+        }
+      });
+
+      // Recargar los datos para ver los cambios
+      await loadData();
+
+    } catch (error) {
+      console.error("Error actualizando cantidad del producto:", error);
+      alert("Hubo un error al actualizar la cantidad. Inténtalo de nuevo.");
+    } finally {
+      setModifyingProduct(null);
+    }
+  };
+
   const getStatusColor = (status: OrderStatus) => {
     const colors: { [key in OrderStatus]?: string } = {
       PENDING: 'bg-yellow-600',
-      CONFIRMED: 'bg-blue-600',
-      PREPARING: 'bg-orange-600',
-      READY: 'bg-green-600',
-      DELIVERED: 'bg-gray-600',
-      CANCELLED: 'bg-red-600'
+      pending: 'bg-yellow-600',
+      PAID: 'bg-green-600',
+      paid: 'bg-green-600',
     };
     return colors[status] || 'bg-gray-600';
   };
@@ -108,11 +168,9 @@ export default function AdminOrders() {
   const getStatusLabel = (status: OrderStatus) => {
     const labels: { [key in OrderStatus]?: string } = {
       PENDING: 'Pendiente',
-      CONFIRMED: 'Confirmado',
-      PREPARING: 'Preparando',
-      READY: 'Listo',
-      DELIVERED: 'Entregado',
-      CANCELLED: 'Cancelado'
+      pending: 'Pendiente',
+      PAID: 'Pagado',
+      paid: 'Pagado',
     };
     return labels[status] || status;
   };
@@ -160,23 +218,9 @@ export default function AdminOrders() {
 
   const statusOptions: { value: OrderStatus | ''; label: string }[] = [
     { value: '', label: 'Todos los estados' },
-    { value: 'PENDING', label: 'Pendiente' },
-    { value: 'CONFIRMED', label: 'Confirmado' },
-    { value: 'PREPARING', label: 'Preparando' },
-    { value: 'READY', label: 'Listo' },
-    { value: 'DELIVERED', label: 'Entregado' },
-    { value: 'CANCELLED', label: 'Cancelado' }
+    { value: 'pending', label: 'Pendiente' },
+    { value: 'paid', label: 'Pagado' }
   ];
-
-  const nextStatusOptions = (currentStatus: OrderStatus): OrderStatus[] => {
-    const flow: { [key in OrderStatus]?: OrderStatus[] } = {
-      PENDING: ['CONFIRMED', 'CANCELLED'],
-      CONFIRMED: ['PREPARING', 'CANCELLED'],
-      PREPARING: ['READY', 'CANCELLED'],
-      READY: ['DELIVERED'],
-    };
-    return flow[currentStatus] || [];
-  };
 
   if (loading) {
     return (
@@ -281,14 +325,50 @@ export default function AdminOrders() {
                     </div>
                   </div>
                   {/* Productos y Total */}
-                  <div className="space-y-2">
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-500 font-semibold">Productos ({order.products.length})</p>
                     {order.products.map(product => (
-                      <div key={product.id} className="flex justify-between items-center text-sm">
-                        <span>
-                          {product.name}
-                          <span className="font-semibold text-yellow-500"> x{product.quantity}</span>
-                        </span>
-                        <span className="font-mono">{formatCurrency(product.price * product.quantity)}</span>
+                      <div key={product.id} className="bg-white rounded-lg p-3 border border-gray-200">
+                        <div className="flex justify-between items-center">
+                          <div className="flex-1">
+                            <span className="font-medium text-gray-900">{product.name}</span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-sm text-gray-500">Cantidad:</span>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleUpdateQuantity(order.id, product.id, product.quantity - 1)}
+                                  disabled={modifyingProduct === product.id || order.status === 'PAID' || order.status === 'paid'}
+                                  className="w-6 h-6 rounded-full bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm font-bold"
+                                >
+                                  -
+                                </button>
+                                <span className="w-8 text-center font-semibold text-yellow-600">{product.quantity}</span>
+                                <button
+                                  onClick={() => handleUpdateQuantity(order.id, product.id, product.quantity + 1)}
+                                  disabled={modifyingProduct === product.id || order.status === 'PAID' || order.status === 'paid'}
+                                  className="w-6 h-6 rounded-full bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm font-bold"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-gray-900">{formatCurrency(product.price * product.quantity)}</span>
+                            <button
+                              onClick={() => handleRemoveProduct(order.id, product.id)}
+                              disabled={modifyingProduct === product.id || order.status === 'PAID' || order.status === 'paid'}
+                              className="w-8 h-8 rounded-full bg-red-100 text-red-600 hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                              title="Eliminar producto"
+                            >
+                              {modifyingProduct === product.id ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                              ) : (
+                                <span className="text-sm font-bold">✕</span>
+                              )}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -297,63 +377,76 @@ export default function AdminOrders() {
                     <span className="text-xl font-bold text-yellow-500">{formatCurrency(order.total)}</span>
                   </div>
                   {/* FORMULARIO PARA AÑADIR PRODUCTO */}
-                  <div className="mt-6 pt-4 border-t border-dashed border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">Añadir Producto a la Orden</h4>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <select 
-                        className="flex-grow bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
-                        value={selectedProduct}
-                        onChange={(e) => setSelectedProduct(e.target.value)}
-                        disabled={addingProductTo === order.id}
-                      >
-                        <option value="">Seleccionar producto...</option>
-                        {products.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} - {formatCurrency(p.price)}</option>
-                        ))}
-                      </select>
-                      <input 
-                        type="number"
-                        min="1"
-                        className="w-20 bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
-                        value={quantity}
-                        onChange={(e) => setQuantity(Number(e.target.value))}
-                        disabled={addingProductTo === order.id}
-                      />
-                      <button
-                        onClick={() => handleAddProduct(order.id)}
-                        className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-semibold hover:bg-green-600 disabled:bg-gray-300 disabled:text-gray-500"
-                        disabled={addingProductTo === order.id || !selectedProduct}
-                      >
-                        {addingProductTo === order.id ? 'Añadiendo...' : 'Añadir'}
-                      </button>
+                  {(order.status === 'PENDING' || order.status === 'pending') && (
+                    <div className="mt-6 pt-4 border-t border-dashed border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Añadir Producto a la Orden</h4>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select 
+                          className="flex-grow bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
+                          value={selectedProduct}
+                          onChange={(e) => setSelectedProduct(e.target.value)}
+                          disabled={addingProductTo === order.id}
+                        >
+                          <option value="">Seleccionar producto...</option>
+                          {products.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} - {formatCurrency(p.price)}</option>
+                          ))}
+                        </select>
+                        <input 
+                          type="number"
+                          min="1"
+                          className="w-20 bg-gray-100 border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
+                          value={quantity}
+                          onChange={(e) => setQuantity(Number(e.target.value))}
+                          disabled={addingProductTo === order.id}
+                        />
+                        <button
+                          onClick={() => handleAddProduct(order.id)}
+                          className="px-4 py-2 bg-green-500 text-white rounded-md text-sm font-semibold hover:bg-green-600 disabled:bg-gray-300 disabled:text-gray-500"
+                          disabled={addingProductTo === order.id || !selectedProduct}
+                        >
+                          {addingProductTo === order.id ? 'Añadiendo...' : 'Añadir'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {(order.status === 'PAID' || order.status === 'paid') && (
+                    <div className="mt-6 pt-4 border-t border-dashed border-gray-200">
+                      <div className="text-center py-3 text-gray-500">
+                        <span className="text-sm italic">Esta orden ya está pagada y no puede ser modificada</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* Acciones de estado */}
-                <div className="lg:w-64 flex-shrink-0 space-y-2 mt-6 lg:mt-0">
-                  <p className="text-sm text-gray-500 mb-2">Cambiar estado</p>
-                  <div className="space-y-2">
-                    {nextStatusOptions(order.status).map((status) => (
+                <div className="lg:w-64 flex-shrink-0 space-y-3 mt-6 lg:mt-0">
+                  <p className="text-sm text-gray-500 mb-2">Acciones</p>
+                  <div className="space-y-3">
+                    {(order.status === 'PENDING' || order.status === 'pending') && (
                       <button
-                        key={status}
-                        onClick={() => updateOrderStatus(order.id, status)}
+                        onClick={() => updateOrderStatus(order.id, 'PAID')}
                         disabled={updating === order.id}
-                        className={`w-full px-4 py-3 rounded-lg text-base font-semibold transition-colors ${getStatusColor(status)} text-white hover:opacity-90 disabled:opacity-50`}
+                        className="w-full px-4 py-4 rounded-lg text-lg font-bold transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                         {updating === order.id ? (
-                          <div className="flex items-center justify-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Actualizando...
-                          </div>
+                          <>
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                            Procesando...
+                          </>
                         ) : (
-                          `Marcar como ${getStatusLabel(status)}`
+                          <>
+                            💳 PAGAR
+                          </>
                         )}
                       </button>
-                    ))}
-                    {nextStatusOptions(order.status).length === 0 && (
-                      <p className="text-sm text-gray-400 text-center py-4">
-                        No hay acciones disponibles
-                      </p>
+                    )}
+                    {(order.status === 'PAID' || order.status === 'paid') && (
+                      <div className="text-center py-4">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg">
+                          <span className="text-lg">✅</span>
+                          <span className="font-semibold">Orden Pagada</span>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
